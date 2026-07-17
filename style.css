@@ -13,9 +13,12 @@
   --pill-bg: rgba(255, 255, 255, 0.8);
   --tag-bg: rgba(255, 255, 255, 0.6);
 
-  --font-display: 'Fredoka', sans-serif;
+  --font-display: 'Bagel Fat One', cursive;
   --font-body: 'Montserrat', sans-serif;
   --font-mono: 'Space Mono', monospace;
+
+  --holo-x: 50%;
+  --holo-y: 50%;
 }
 
 * {
@@ -24,11 +27,42 @@
   box-sizing: border-box;
 }
 
+html {
+  scrollbar-color: #b795ea rgba(255, 255, 255, 0.3);
+  scrollbar-width: thin;
+}
+
 body {
   background: linear-gradient(120deg, #e8d5f7 0%, #d3d3f9 50%, #c0d8f8 100%);
   background-attachment: fixed;
   font-family: var(--font-body);
   color: var(--purple-text);
+  cursor: url('images/cursor-sparkle.svg') 15 15, auto;
+}
+
+::-webkit-scrollbar {
+  width: 14px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.25);
+}
+::-webkit-scrollbar-thumb {
+  background-color: #b795ea;
+  background-image: linear-gradient(180deg, #f6b8e4, #9d74d6);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-image: linear-gradient(180deg, #f2a8da, #8a5fc9);
+  background-clip: padding-box;
+}
+
+a,
+button,
+.button,
+.pill {
+  cursor: url('images/cursor-heart.svg') 13 12, pointer;
 }
 
 a {
@@ -36,6 +70,112 @@ a {
 }
 a:hover {
   color: var(--pink);
+}
+
+/* Holographic sheen — shared by the portrait card, buttons, and pills.
+   Two independent layers, like a foil trading card:
+   ::before = glint texture, animates on its own via CSS keyframes (always
+     running, no JS needed) — this is the "idle" glisten.
+   ::after  = diagonal rainbow sheen, driven by --holo-x/--holo-y which
+     script.js updates continuously from either pointer position or, when
+     idle, a slow autonomous drift — so it's also always moving, and
+     pointer input adds sharper, more direct motion on top. */
+.holo-surface {
+  position: relative;
+  isolation: isolate;
+}
+.holo-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.85) 0%, transparent 1.3%),
+    radial-gradient(circle at 70% 12%, rgba(255, 255, 255, 0.75) 0%, transparent 1%),
+    radial-gradient(circle at 85% 55%, rgba(255, 255, 255, 0.8) 0%, transparent 1.1%),
+    radial-gradient(circle at 30% 68%, rgba(255, 255, 255, 0.75) 0%, transparent 1%),
+    radial-gradient(circle at 55% 88%, rgba(255, 255, 255, 0.75) 0%, transparent 1%),
+    radial-gradient(circle at 6% 85%, rgba(255, 255, 255, 0.7) 0%, transparent 0.9%),
+    radial-gradient(circle at 94% 32%, rgba(255, 255, 255, 0.7) 0%, transparent 0.9%),
+    radial-gradient(circle at 45% 40%, rgba(255, 255, 255, 0.65) 0%, transparent 0.8%);
+  background-size: 220% 220%;
+  mix-blend-mode: soft-light;
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: 1;
+  animation: holo-sparkle-drift 9s ease-in-out infinite;
+}
+.holo-surface::after {
+  content: '';
+  position: absolute;
+  inset: -15%;
+  border-radius: inherit;
+  /* Two stacked layers in one background: a broad, soft, always-present
+     ambient tint (the "underlayer" — gives the surface a base holographic
+     quality even where no streak is crossing it) plus thin repeating
+     streaks with real transparent gaps between them, which is what reads
+     as light catching foil rather than a tinted film. Both positions
+     animate together via holo-sweep, slow and steady, always running with
+     no cursor needed; the separate `transform` (driven by --holo-x/y from
+     script.js) only nudges the whole thing slightly for cursor-added depth. */
+  background-image:
+    linear-gradient(
+      135deg,
+      rgba(255, 150, 230, 0.32) 0%,
+      rgba(160, 200, 255, 0.3) 25%,
+      rgba(255, 235, 150, 0.26) 50%,
+      rgba(150, 255, 200, 0.3) 75%,
+      rgba(200, 160, 255, 0.32) 100%
+    ),
+    repeating-linear-gradient(
+      100deg,
+      transparent 0%,
+      transparent 5%,
+      rgba(255, 70, 210, 0.65) 8%,
+      transparent 11%,
+      transparent 19%,
+      rgba(70, 190, 255, 0.65) 22%,
+      transparent 25%,
+      transparent 33%,
+      rgba(255, 220, 70, 0.6) 36%,
+      transparent 39%,
+      transparent 47%,
+      rgba(150, 70, 255, 0.65) 50%,
+      transparent 53%,
+      transparent 61%,
+      rgba(70, 255, 170, 0.6) 64%,
+      transparent 67%,
+      transparent 75%
+    );
+  background-size: 200% 200%, 240% 240%;
+  background-repeat: no-repeat, no-repeat;
+  mix-blend-mode: color-dodge;
+  opacity: 0.63;
+  pointer-events: none;
+  transform: translate(calc((var(--holo-x, 50%) - 50%) * 0.4), calc((var(--holo-y, 50%) - 50%) * 0.25));
+  transition: transform 0.25s ease-out;
+  animation: holo-sweep 18s linear infinite;
+  z-index: 2;
+}
+
+@keyframes holo-sweep {
+  0%   { background-position: 20% 30%, 0% 0%; }
+  100% { background-position: 80% 70%, 240% 160%; }
+}
+
+/* Intensity tiers: card (full strength, above) > CTA buttons > skill pills. */
+.holo-surface--button::before { opacity: 0.14; }
+.holo-surface--button::after { opacity: 0.32; }
+
+.holo-surface--pill::before { opacity: 0.08; }
+.holo-surface--pill::after { opacity: 0.16; }
+
+@keyframes holo-sparkle-drift {
+  0%   { background-position: 15% 25%; }
+  25%  { background-position: 80% 15%; }
+  50%  { background-position: 65% 82%; }
+  75%  { background-position: 15% 70%; }
+  100% { background-position: 15% 25%; }
 }
 
 .grid-overlay {
@@ -61,6 +201,72 @@ a:hover {
   font: 700 15px var(--font-mono);
   letter-spacing: 4px;
   color: var(--purple-accent);
+}
+
+.status-cluster {
+  align-self: flex-start;
+  margin-bottom: -52px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-bar {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1.5px solid #fff;
+  border-radius: 999px;
+  padding: 8px 16px;
+  box-shadow: 0 6px 16px rgba(140, 100, 200, 0.15);
+}
+
+.status-dot {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #7ee0ab;
+  box-shadow: 0 0 0 rgba(126, 224, 171, 0.6);
+  animation: status-pulse 2.4s ease-out infinite;
+}
+
+.status-bar__text {
+  font: 700 13px var(--font-mono);
+  letter-spacing: 0.5px;
+  color: var(--purple-mid);
+}
+
+.contact-pill {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1.5px solid #fff;
+  border-radius: 999px;
+  padding: 8px 16px;
+  box-shadow: 0 6px 16px rgba(140, 100, 200, 0.15);
+}
+
+.contact-pill__icon {
+  width: 14px;
+  height: 14px;
+  color: var(--purple-mid);
+}
+
+.contact-pill__handle {
+  font: 700 13px var(--font-mono);
+  letter-spacing: 0.5px;
+  color: var(--purple-mid);
+}
+
+@keyframes status-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(126, 224, 171, 0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(126, 224, 171, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(126, 224, 171, 0); }
 }
 
 .section-heading {
@@ -97,6 +303,8 @@ a:hover {
   background: linear-gradient(160deg, #fff, #f6b8e4 30%, #a98ee8 65%, #8fc2f4);
   box-shadow: 0 24px 50px rgba(140, 100, 200, 0.35);
   transform: rotate(-1.5deg);
+  transition: transform 0.15s ease-out;
+  will-change: transform;
 }
 
 .hero__portrait-inner {
@@ -108,7 +316,7 @@ a:hover {
   background: linear-gradient(180deg, #fbe3f5, #d9d0f8);
 }
 
-.hero__portrait-inner img {
+.hero__portrait-img {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
@@ -135,6 +343,94 @@ a:hover {
   color: var(--pink);
 }
 
+.hero__portrait-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 25%;
+  background: linear-gradient(to top, #fff 0%, rgba(255, 255, 255, 0.65) 55%, transparent 100%);
+  pointer-events: none;
+}
+
+.hero__portrait-logo,
+.hero__portrait-logo-shine,
+.hero__portrait-logo-sparkle {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: 62%;
+  aspect-ratio: 698 / 230;
+  -webkit-mask-image: url('images/logoflat.png');
+  mask-image: url('images/logoflat.png');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  pointer-events: none;
+}
+
+/* Solid base mark + white glow halo so it stays legible regardless of the
+   card gradient underneath — a translucent multiply blend alone washed out
+   against the light fade at the bottom of the card. */
+.hero__portrait-logo {
+  background: #6a17ad;
+  opacity: 0.8;
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 9px rgba(255, 255, 255, 0.85));
+}
+
+/* Shine + sparkle stay subtle here on purpose — this text needs to stay
+   readable, so they add a little color-shift dimension without ever
+   competing with the solid base color above. */
+.hero__portrait-logo-shine {
+  background-image: linear-gradient(
+    115deg,
+    transparent 10%,
+    rgba(255, 200, 240, 0.9) 25%,
+    rgba(200, 220, 255, 0.9) 45%,
+    rgba(255, 235, 190, 0.9) 65%,
+    transparent 85%
+  );
+  background-size: 280% 280%;
+  background-position: var(--holo-x) var(--holo-y);
+  mix-blend-mode: overlay;
+  opacity: 0.55;
+  transition: background-position 0.2s ease-out;
+}
+
+.hero__portrait-logo-sparkle {
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(255, 255, 255, 0.9) 0%, transparent 2.2%),
+    radial-gradient(circle at 75% 15%, rgba(255, 255, 255, 0.85) 0%, transparent 1.8%),
+    radial-gradient(circle at 88% 60%, rgba(255, 255, 255, 0.9) 0%, transparent 2%),
+    radial-gradient(circle at 35% 75%, rgba(255, 255, 255, 0.8) 0%, transparent 1.8%),
+    radial-gradient(circle at 55% 45%, rgba(255, 255, 255, 0.75) 0%, transparent 1.6%);
+  background-size: 220% 220%;
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+  animation: holo-sparkle-drift 7s ease-in-out infinite reverse;
+}
+
+.sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.9), 0 0 14px 4px rgba(210, 170, 255, 0.65);
+  opacity: 0;
+  pointer-events: none;
+  animation: sparkle-twinkle 3.4s ease-in-out infinite;
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
 .hero__content {
   flex: 1 1 420px;
   display: flex;
@@ -148,17 +444,60 @@ a:hover {
   flex-direction: column;
 }
 
-.hero__title {
-  font: 700 clamp(52px, 10vw, 92px) / 1 var(--font-display);
-  background: linear-gradient(180deg, #fff2fb 5%, #f7b1dd 45%, #b795ea 95%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 2px 0 rgba(255, 255, 255, 0.9)) drop-shadow(0 8px 18px rgba(150, 110, 210, 0.45));
+.hero__logo {
+  position: relative;
+  width: clamp(240px, 32vw, 380px);
+  aspect-ratio: 698 / 230;
+  -webkit-mask-image: url('images/logoflat.png');
+  mask-image: url('images/logoflat.png');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: left center;
+  mask-position: left center;
+  background: linear-gradient(160deg, #fff8fc 0%, #f8bfe6 35%, #b48ee9 68%, #8fc2f4 100%);
+  filter: drop-shadow(0 10px 22px rgba(150, 110, 210, 0.45));
+}
+
+.hero__logo-sparkle {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 12% 30%, rgba(255, 255, 255, 0.95) 0%, transparent 3.5%),
+    radial-gradient(circle at 45% 15%, rgba(255, 255, 255, 0.9) 0%, transparent 3%),
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.95) 0%, transparent 3.2%),
+    radial-gradient(circle at 90% 25%, rgba(255, 255, 255, 0.85) 0%, transparent 2.8%),
+    radial-gradient(circle at 30% 75%, rgba(255, 255, 255, 0.85) 0%, transparent 2.8%);
+  background-size: 220% 220%;
+  mix-blend-mode: soft-light;
+  opacity: 0.55;
+  pointer-events: none;
+  animation: holo-sparkle-drift 8s ease-in-out infinite reverse;
+}
+
+.hero__logo-shine {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    115deg,
+    transparent 15%,
+    rgba(255, 255, 255, 0.95) 28%,
+    rgba(255, 180, 235, 0.9) 38%,
+    rgba(180, 210, 255, 0.9) 48%,
+    rgba(255, 240, 170, 0.9) 58%,
+    rgba(255, 180, 235, 0.9) 68%,
+    transparent 82%
+  );
+  background-size: 260% 260%;
+  background-position: var(--holo-x) var(--holo-y);
+  mix-blend-mode: overlay;
+  opacity: 0.85;
+  pointer-events: none;
 }
 
 .hero__subtitle {
-  font: 700 clamp(20px, 4vw, 30px) var(--font-display);
+  font: 400 clamp(20px, 4vw, 30px) var(--font-display);
   color: var(--purple-dark);
   margin-top: 6px;
 }
@@ -182,6 +521,7 @@ a:hover {
   font: 800 15px var(--font-body);
   letter-spacing: 1px;
   color: var(--purple-dark);
+  overflow: hidden;
 }
 .pill span {
   color: var(--pink-soft);
@@ -206,6 +546,7 @@ a:hover {
   box-shadow: 0 8px 20px rgba(140, 100, 200, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.55);
   text-decoration: none;
   white-space: nowrap;
+  overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .button:hover {
@@ -214,10 +555,29 @@ a:hover {
   box-shadow: 0 12px 26px rgba(140, 100, 200, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.55);
 }
 
-.availability {
-  font: 700 14px var(--font-mono);
-  letter-spacing: 1px;
-  color: var(--purple-mid);
+.button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.65s ease;
+  pointer-events: none;
+  z-index: 3;
+}
+.button:hover::before {
+  left: 130%;
+}
+
+.button--primary {
+  animation: cta-glow 3.2s ease-in-out infinite;
+}
+@keyframes cta-glow {
+  0%, 100% { box-shadow: 0 8px 20px rgba(140, 100, 200, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.55); }
+  50% { box-shadow: 0 10px 30px rgba(196, 92, 174, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.55); }
 }
 
 /* Experience */
@@ -231,7 +591,15 @@ a:hover {
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-auto-flow: dense;
   gap: 20px;
+}
+
+/* Wide source images (banners) get two columns instead of being
+   center-cropped down to a near-square tile, which was clipping their
+   text — this way the crop is only ever a light trim off the top/bottom. */
+.work-item--wide {
+  grid-column: span 2;
 }
 
 .experience-card {
@@ -254,7 +622,7 @@ a:hover {
 }
 
 .experience-card__title {
-  font: 700 22px var(--font-display);
+  font: 400 22px var(--font-display);
   color: var(--purple-dark);
 }
 .experience-card__title span {
@@ -277,10 +645,62 @@ a:hover {
   font: 500 15px/1.6 var(--font-body);
 }
 
+.experience-card--locked {
+  background: rgba(255, 255, 255, 0.4);
+  border: 1.5px dashed rgba(154, 127, 209, 0.45);
+  box-shadow: none;
+  overflow: hidden;
+}
+.experience-card--locked .experience-card__title {
+  color: var(--purple-mid);
+  opacity: 0.75;
+}
+.experience-card--locked .experience-card__title span {
+  font: 700 12px var(--font-mono);
+  letter-spacing: 2px;
+  color: var(--purple-accent-2);
+  text-transform: uppercase;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.experience-card--locked .experience-card__role,
+.experience-card--locked .experience-card__description {
+  opacity: 0.65;
+}
+
+.tag-row-label {
+  font: 700 13px var(--font-mono);
+  letter-spacing: 3px;
+  color: var(--purple-accent);
+  margin-bottom: -6px;
+}
+
+.skill-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.skill-tree__row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.skill-tree__category {
+  flex: 0 0 112px;
+  font: 700 13px var(--font-mono);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--purple-dark);
+}
+
 .tag-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  flex: 1 1 auto;
 }
 
 .tag {
@@ -306,27 +726,44 @@ a:hover {
 }
 
 .work-item__frame {
+  position: relative;
+  display: block;
+  width: 100%;
   height: 260px;
+  margin: 0;
+  border: none;
   border-radius: 16px;
   padding: 4px;
   background: linear-gradient(160deg, #fff, #f6b8e4 30%, #a98ee8 65%, #8fc2f4);
   box-shadow: 0 10px 26px rgba(140, 100, 200, 0.2);
+  font: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.work-item__frame:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(140, 100, 200, 0.32);
+}
+.work-item__frame:focus-visible {
+  outline: 3px solid var(--purple-accent);
+  outline-offset: 3px;
 }
 
-.work-item__placeholder {
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 700 14px var(--font-mono);
-  letter-spacing: 2px;
-  color: var(--lilac);
-  text-align: center;
-  padding: 12px;
+.work-item__expand {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1.5px solid #fff;
+  border-radius: 999px;
+  padding: 5px 11px;
+  font: 700 11px var(--font-mono);
+  letter-spacing: 1px;
+  color: var(--purple-dark);
+  box-shadow: 0 4px 12px rgba(140, 100, 200, 0.3);
+  transition: transform 0.2s ease;
+}
+.work-item__frame:hover .work-item__expand {
+  transform: scale(1.06);
 }
 
 .work-item__frame img {
@@ -344,6 +781,50 @@ a:hover {
   padding-left: 4px;
 }
 
+/* Scroll reveal — direction-aware; script.js toggles the from-below /
+   from-above classes based on scroll direction as elements enter/exit view. */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.reveal--from-above {
+  transform: translateY(-28px);
+}
+.reveal.reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 404 */
+
+.not-found {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  text-align: center;
+  padding: 24px;
+}
+
+.not-found__code {
+  font: 400 clamp(96px, 22vw, 220px) / 1 var(--font-display);
+  background: linear-gradient(180deg, #fff2fb 5%, #f7b1dd 45%, #b795ea 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(255, 255, 255, 0.9)) drop-shadow(0 8px 18px rgba(150, 110, 210, 0.45));
+}
+
+.not-found__message {
+  font: 500 19px/1.6 var(--font-body);
+  color: var(--purple-text);
+  max-width: 420px;
+}
+
 /* Contact */
 
 .contact {
@@ -356,7 +837,7 @@ a:hover {
 }
 
 .contact__heading {
-  font: 700 44px var(--font-display);
+  font: 400 44px var(--font-display);
   color: var(--purple-dark);
 }
 
@@ -370,4 +851,81 @@ a:hover {
   letter-spacing: 3px;
   color: var(--purple-accent-2);
   margin-top: 16px;
+}
+
+/* Lightbox — click a work sample to see it uncropped */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.lightbox.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(50, 30, 70, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.lightbox__content {
+  position: relative;
+  max-width: min(900px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  transform: scale(0.96);
+  transition: transform 0.25s ease;
+}
+.lightbox.is-open .lightbox__content {
+  transform: scale(1);
+}
+
+.lightbox__image {
+  max-width: 100%;
+  max-height: 78vh;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(50, 20, 70, 0.45);
+  background: #fff;
+}
+
+.lightbox__caption {
+  font: 700 14px var(--font-mono);
+  letter-spacing: 1px;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.lightbox__close {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--button-top), var(--button-bottom));
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(140, 100, 200, 0.4);
+  transition: transform 0.15s ease;
+}
+.lightbox__close:hover {
+  transform: scale(1.08);
 }
