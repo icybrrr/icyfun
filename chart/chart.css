@@ -559,9 +559,19 @@
    browser shrinks both dimensions together via aspect-ratio rather than
    the canvas overflowing and forcing a scroll. */
 #chart-canvas {
+  /* width/height both auto, constrained only by max-width/max-height —
+     NOT one dimension pinned with the other capped independently. That
+     older pattern (fixed width + max-height, or fixed height + max-width)
+     lets the browser clamp one side without the other following, silently
+     distorting the 1080:1350 ratio in whichever viewport shape makes the
+     "wrong" constraint the binding one. With both auto + both max-*, the
+     browser always picks whichever constraint is more restrictive and
+     derives the other dimension from aspect-ratio, so the ratio can never
+     drift regardless of viewport shape. */
   display: block;
-  width: min(94vw, 480px);
+  width: auto;
   height: auto;
+  max-width: min(94vw, 480px);
   max-height: 60vh;
   aspect-ratio: 1080 / 1350;
   border-radius: 18px;
@@ -583,9 +593,9 @@
 @media (min-width: 700px) and (min-height: 700px) {
   #chart-canvas {
     width: auto;
-    height: min(82vh, 920px);
-    max-height: none;
+    height: auto;
     max-width: 78vw;
+    max-height: min(82vh, 920px);
   }
 }
 
