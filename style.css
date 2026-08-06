@@ -205,13 +205,53 @@ a:hover {
   color: var(--purple-accent);
 }
 
-.status-cluster {
+/* Site header — a floating cluster of pills (not a solid bar), shared
+   across every page. Deliberately not a conventional edge-to-edge sticky
+   nav: everything else on this site is a soft rounded pill/card, so the
+   header speaks the same visual language instead of introducing a new one.
+   Homepage-specific overlap-the-hero positioning lives in the scoped rule
+   below; chart.css adds its own page-specific spacing since it has no
+   hero to float over. */
+.site-header {
   align-self: flex-start;
-  margin-bottom: -52px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+/* Only on the homepage: float up over the hero's top edge instead of
+   sitting in normal flow, using the .page flex column's own gap. */
+.page > .site-header {
+  margin-bottom: -52px;
+}
+
+.site-header a:focus-visible {
+  outline: 3px solid var(--purple-accent);
+  outline-offset: 3px;
+}
+
+/* The one actionable pill in the cluster — same shape/size as its
+   informational siblings (status/contact), gradient-filled so it reads as
+   the CTA without breaking the pill-cluster's visual family. */
+.site-header__cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font: 700 13px var(--font-mono);
+  letter-spacing: 0.5px;
+  color: #fff;
+  background: linear-gradient(180deg, var(--button-top), var(--button-bottom));
+  box-shadow: 0 6px 16px rgba(140, 100, 200, 0.3);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.site-header__cta:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(140, 100, 200, 0.4);
 }
 
 .status-bar {
