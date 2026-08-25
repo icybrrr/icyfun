@@ -1,0 +1,41 @@
+# Free Supabase projects sleep after ~7 days without an API request, and the
+# failure mode is ugly: someone opens the guestbook on a quiet week and it is
+# broken. A live site keeps itself awake; the quiet stretches are the risk.
+#
+# This cannot be pg_cron inside Supabase -- if the project is asleep the cron is
+# asleep with it, so it could never wake anything. The ping has to be external.
+#
+# It also doubles as a monitor: the step fails if the wall stops answering, and
+# GitHub emails you. So a broken guestbook reaches you instead of an employer.
+#
+# The key below is the publishable one. It already ships inside os.js in this
+# same public repo and is bounded by row level security, so putting it here adds
+# no exposure. The service_role key must never appear in a workflow.
+
+name: keep the guestbook awake
+
+on:
+  schedule:
+    # daily, deliberately off the hour: GitHub queues on-the-hour jobs and can
+    # delay them a long way under load
+    - cron: '17 6 * * *'
+  workflow_dispatch:        # so you can also run it by hand from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: read one row from the guestbook
+        env:
+          URL: https://ipvpovvdjwbaizbucrjc.supabase.co
+          KEY: sb_publishable_q3gOsrzRtRpTVCgSoDoaiQ_l4Jmu5QF
+        run: |
+          code=$(curl -sS -o /tmp/body.txt -w '%{http_code}' \
+            "$URL/rest/v1/guestbook?select=id&limit=1" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+          echo "HTTP $code"
+          head -c 200 /tmp/body.txt || true
+          if [ "$code" != "200" ]; then
+            echo "::error::guestbook did not answer (HTTP $code)"
+            exit 1
+          fi

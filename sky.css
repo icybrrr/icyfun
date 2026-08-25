@@ -1,0 +1,416 @@
+/* ==========================================================================
+   THE SKY — the scene every page on this site sits in.
+
+   Split out of os.css for the same reason the tokens and .glass were: the
+   alignment chart is an app on this machine, and a different background is the
+   loudest way to say it is not. os.css cannot be loaded there (it also sets
+   `overflow: hidden` for the desktop shell), so the scene moves here.
+
+   Three layers per theme, all inside #sky, so they sit under every surface and
+   give the glass something real to refract:
+     #sky::before  the atmosphere (foil sweep, arcade floor, god rays, milk swirl)
+     #motifs       drifting sprites, one motif set per theme
+     #sky::after   the finish (grain, scanlines, bloom, vignette)
+   Plus #sun / #moon / #stars / .cloud, and #weather holding the rain and snow
+   that CSS shows or hides by data-mode.
+
+   sky.js builds the markup and the sprite pools, so neither page owns a copy.
+   ========================================================================== */
+
+
+
+/* --------------------------------------------------------------------------
+   3. SKY / WEATHER  (z 0-1, decoupled from UI chrome)
+   -------------------------------------------------------------------------- */
+
+#sky {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sky);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   THEME ATMOSPHERE — what makes a theme a place instead of a background.
+
+   Three layers per theme, all inside #sky so they sit under every UI surface
+   and give the glass chrome something real to refract:
+     #sky::before  the atmosphere (foil sweep, arcade floor, god rays, milk swirl)
+     #motifs       drifting sprites, one motif set per theme
+     #sky::after   the finish (grain, scanlines, bloom, vignette)
+   -------------------------------------------------------------------------- */
+
+#sky::before,
+#sky::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+#sky::before { inset: -20%; }
+#sky::after { inset: 0; }
+
+#motifs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* sprites fade out before they reach the menu bar or the dock, so the glass
+     always has calm edges to sit on */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 78%, transparent 95%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 78%, transparent 95%);
+}
+.motif {
+  position: absolute;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-image: var(--motif-1);
+  opacity: var(--motif-op, 0.55);
+  animation-name: var(--motif-anim, motif-rise);
+  animation-timing-function: var(--ease-linear);
+  animation-iteration-count: infinite;
+}
+.motif--2 { background-image: var(--motif-2, var(--motif-1)); }
+.motif--3 { background-image: var(--motif-3, var(--motif-1)); }
+.motif--4 { background-image: var(--motif-4, var(--motif-1)); }
+
+@keyframes motif-rise {
+  from { transform: translate3d(0, 12vh, 0) rotate(0deg); }
+  to { transform: translate3d(var(--drift, 4vw), -108vh, 0) rotate(var(--spin, 22deg)); }
+}
+
+body[data-wall="base"] #sky::before {
+  background:
+    radial-gradient(42% 34% at 18% 24%, #ffffff5c 0, transparent 62%),
+    radial-gradient(38% 30% at 82% 66%, #d9c4f75c 0, transparent 64%);
+  animation: soft-bloom 46s var(--ease-standard) infinite alternate;
+}
+/* The .holo-surface foil recipe blown up to fill the wallpaper, plus the thing
+   that makes real holographic film look holographic: a SECOND sweep crossing the
+   first. One set of bands is a rainbow gradient; two sets at different angles
+   interfere, and the diamond pattern where they cross is what the eye reads as a
+   diffraction surface rather than a coloured haze.
+
+   The yellow stop is now peach. Under `color-dodge` a stop lifts the backdrop in
+   proportion to its own channels, so a yellow with almost no blue lifted red and
+   green and left blue behind: against the night sky that landed as a broad olive
+   band across the middle of the screen, which is the one colour this palette
+   should never produce. Peach carries enough blue to dodge toward warm white.
+
+   Bands are tighter than they were too (190% against 260%), because at that
+   scale the sweep read as a soft wash rather than as foil. */
+body[data-wall="holo"] #sky::before {
+  background-image:
+    repeating-linear-gradient(100deg,
+      transparent 0 6%, rgba(255, 70, 210, 0.5) 9%, transparent 12% 20%,
+      rgba(70, 190, 255, 0.5) 23%, transparent 26% 34%,
+      rgba(255, 190, 150, 0.44) 37%, transparent 40% 48%,
+      rgba(150, 70, 255, 0.5) 51%, transparent 54% 62%,
+      rgba(70, 255, 170, 0.42) 65%, transparent 68% 76%),
+    repeating-linear-gradient(-52deg,
+      transparent 0 8%, rgba(120, 220, 255, 0.34) 11%, transparent 14% 26%,
+      rgba(255, 150, 235, 0.34) 29%, transparent 32% 44%,
+      rgba(190, 255, 220, 0.28) 47%, transparent 50% 62%);
+  background-size: 128% 128%, 168% 168%;
+  mix-blend-mode: color-dodge;
+  opacity: 0.5;
+  /* alternate for the same reason holo-sweep needs it: these keyframes end
+     somewhere other than where they began, so the wallpaper's foil snapped back
+     every 26 seconds. foil-cross already returns to its own start, so it loops
+     cleanly on its own and is left alone. */
+  animation: foil-sweep 26s var(--ease-linear) infinite alternate,
+             foil-cross 41s var(--ease-linear) infinite;
+}
+body[data-mode="night"][data-wall="holo"] #sky::before { opacity: 0.62; }
+/* color-dodge needs something dark to lift, and a day sky has nothing: the foil
+   vanished into it. `overlay` keeps the same bands and lets them read on light. */
+body[data-mode="day"][data-wall="holo"] #sky::before,
+body[data-mode="snow"][data-wall="holo"] #sky::before { mix-blend-mode: overlay; opacity: 0.72; }
+/* the light the foil is catching. A specular hotspot gives the bands something
+   to be angled toward, which is the difference between a surface and a texture */
+body[data-wall="holo"] #sky::after {
+  background:
+    radial-gradient(38% 26% at 68% 16%, #ffffff59 0, transparent 66%),
+    radial-gradient(58% 44% at 50% 8%, #ffffff40 0, transparent 70%);
+  mix-blend-mode: soft-light;
+  animation: soft-bloom 30s var(--ease-standard) infinite alternate;
+}
+/* Strawberry was three soft radial gradients and nothing else, which is a
+   background rather than a place. Arcade has a floor and archangel has rays;
+   this needed a form of its own, and the one the name is already promising is
+   the inside of a glass of spritz: cream turning through it, and the
+   bubbles that rise when you have just stirred it.
+
+   The cream stays in ::before, where the swirl animation already lives. */
+body[data-wall="strawberry"] #sky::before {
+  background:
+    radial-gradient(46% 38% at 20% 26%, #ffffffa8 0, transparent 62%),
+    radial-gradient(42% 34% at 80% 60%, #ffc4dfa8 0, transparent 64%),
+    radial-gradient(38% 32% at 52% 92%, #fffefeb8 0, transparent 62%),
+    /* a slow ribbon of cream folding through the middle, the shape a pour makes */
+    radial-gradient(64% 18% at 34% 54%, #fff7fb6b 0, transparent 70%),
+    radial-gradient(52% 14% at 74% 38%, #ffe9f26b 0, transparent 72%),
+    /* Depth. A glass is denser at the bottom, and the day sky here averages
+       rgb(250,227,238): a white-rimmed bubble on that has nothing to sit
+       against, which is why the first pass was invisible in daylight. */
+    linear-gradient(to top, #f0a0cc5c 0, #f4b6d42e 26%, transparent 58%);
+  animation: milk-swirl 44s var(--ease-standard) infinite alternate;
+}
+body[data-mode="night"][data-wall="strawberry"] #sky::before { opacity: 0.35; }
+/* THE SURFACE. Arcade has a floor and archangel has rays; this is the horizon
+   strawberry never had. Everything below the line is in the drink, everything
+   above it is air and glass, and that division is what turns a background into a
+   place. It is an ellipse rather than a rule because a meniscus curves: a dead
+   straight line across the screen reads as a border on the window, not as the
+   top of a liquid.
+
+   Bubbles were tried in this layer first, as specks, and were indistinguishable
+   from the sparkle layer drifting over the top. They are the motif sprites now,
+   which already rise, and the sparkles are switched off for this theme so there
+   is only one thing in the air. */
+body[data-wall="strawberry"] #sky::after {
+  background-image:
+    /* the bright edge of the surface, and the fizz sitting just under it */
+    radial-gradient(150% 34% at 50% -8%, transparent 0 58%, #ffffffe6 61.5%, #ffffff8c 64%, transparent 74%),
+    radial-gradient(150% 34% at 50% -8%, transparent 0 64%, #fff2f7a6 68%, #fff2f73d 76%, transparent 88%),
+    radial-gradient(150% 34% at 50% -8%, transparent 0 57%, #e884b459 60%, transparent 66%),
+    /* the just-poured bloom: the cloud where syrup and soda are still meeting */
+    radial-gradient(46% 20% at 38% 30%, #fffdfd7a 0, transparent 70%),
+    radial-gradient(38% 16% at 70% 24%, #ffe4ef85 0, transparent 72%),
+    radial-gradient(70% 50% at 50% 100%, #ffffff40 0, transparent 66%);
+  animation: soft-bloom 52s var(--ease-standard) infinite alternate;
+}
+body[data-mode="night"][data-wall="strawberry"] #sky::after { opacity: 0.62; }
+/* One thing in the air, not two. The sparkle layer and the bubbles are both
+   small bright drifting dots, and side by side neither reads as anything. */
+body[data-wall="strawberry"] #decor { display: none; }
+/* the floor: a neon grid in perspective, scrolling toward you */
+body[data-wall="arcade"] #sky::before {
+  inset: auto -30% -2% -30%;
+  height: 52%;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 84px, #7de3ff 84px 86px),
+    repeating-linear-gradient(0deg, transparent 0 52px, #ff8ad8 52px 54px);
+  opacity: 0.5;
+  transform: perspective(300px) rotateX(64deg);
+  transform-origin: bottom center;
+  -webkit-mask-image: linear-gradient(to top, #000 4%, transparent 82%);
+  mask-image: linear-gradient(to top, #000 4%, transparent 82%);
+  animation: arcade-floor 3.6s var(--ease-linear) infinite;
+}
+/* the tube: scanlines, a horizon glow, and a soft corner vignette */
+body[data-wall="arcade"] #sky::after {
+  background-image:
+    radial-gradient(70% 30% at 50% 76%, #7de3ff2e 0, transparent 70%),
+    radial-gradient(50% 26% at 22% 84%, #ff8ad82e 0, transparent 72%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.26) 0 1px, transparent 1px 3px);
+  animation: crt-flicker 5.5s steps(1) infinite;
+}
+
+/* sparkles that turn and swell as they fall, the way covenant's do */
+@keyframes motif-descend {
+  0% { transform: translate3d(0, -16vh, 0) rotate(0deg) scale(0.7); opacity: 0; }
+  14% { opacity: 1; }
+  50% { transform: translate3d(calc(var(--drift, 5vw) * 0.5), 44vh, 0) rotate(90deg) scale(1.18); }
+  86% { opacity: 1; }
+  100% { transform: translate3d(var(--drift, 5vw), 116vh, 0) rotate(200deg) scale(0.85); opacity: 0; }
+}
+
+/* light through a very high window */
+body[data-wall="archangel"] #sky::before {
+  inset: -40% -25% auto -25%;
+  height: 148%;
+  background: repeating-conic-gradient(from 194deg at 62% -16%,
+    rgba(255, 255, 255, 0.7) 0 1deg,
+    rgba(203, 169, 244, 0.36) 1deg 2.3deg,
+    transparent 2.3deg 6.2deg);
+  -webkit-mask-image: linear-gradient(to bottom, #000 2%, transparent 76%);
+  mask-image: linear-gradient(to bottom, #000 2%, transparent 76%);
+  animation: god-rays 39s var(--ease-standard) infinite alternate;  /* 13 x 3 */
+}
+body[data-mode="night"][data-wall="archangel"] #sky::before { opacity: 0.62; }
+
+/* the halo: one slow breath of light behind the whole machine */
+body[data-wall="archangel"] #sky::after {
+  background:
+    radial-gradient(44% 32% at 62% 3%, rgba(255, 255, 255, 0.62) 0, transparent 70%),
+    radial-gradient(74% 54% at 50% 46%, rgba(203, 169, 244, 0.32) 0, transparent 72%);
+  animation: halo-breathe 6.5s var(--ease-standard) infinite;  /* 13 / 2 */
+}
+
+/* thirteen motifs, not eighteen. the count is the point. */
+body[data-wall="archangel"] .motif:nth-child(n + 14) { display: none; }
+
+
+#sun {
+  position: absolute;
+  top: -90px;
+  right: -80px;
+  width: 300px;
+  height: 300px;
+  border-radius: var(--radius-circle);
+  background: radial-gradient(circle, #fdf3d0cc 0%, #f9e9c455 45%, transparent 70%);
+  transition: opacity var(--motion-slow);
+}
+#moon {
+  position: absolute;
+  top: 34%;
+  right: 6%;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-circle);
+  background: radial-gradient(circle at 62% 40%, #fdf6d8, #f4e9bf 70%);
+  box-shadow: 0 0 46px #f4e9bf88;
+  opacity: 0;
+  transition: opacity var(--motion-slow);
+  -webkit-mask-image: radial-gradient(circle at 30% 42%, transparent 46%, #000 48%);
+  mask-image: radial-gradient(circle at 30% 42%, transparent 46%, #000 48%);
+}
+body[data-mode="night"] #sun { opacity: 0; }
+body[data-mode="rain"] #sun { opacity: 0.25; }
+body[data-mode="snow"] #sun { opacity: 0.45; }
+body[data-mode="night"] #moon { opacity: 1; }
+
+#stars {
+  position: absolute;
+  inset: 0 0 26% 0;
+  opacity: 0;
+  transition: opacity var(--motion-slow);
+}
+body[data-mode="night"] #stars { opacity: 1; }
+
+/* Lived in os.css until 23 Aug 2026, orphaned: sky.js was emitting bare spans,
+   so nothing on any page ever matched this and the night sky was empty. The
+   rule is here now, beside the container it fills. */
+.star {
+  position: absolute;
+  border-radius: var(--radius-circle);
+  background: #fff;
+  box-shadow: 0 0 4px 1px rgba(255, 255, 255, 0.75);
+  animation: sparkle-twinkle 3.4s var(--ease-standard) infinite;   /* style.css */
+}
+.star--big {
+  box-shadow: 0 0 7px 2px rgba(255, 255, 255, 0.9), 0 0 17px 5px rgba(210, 170, 255, 0.5);
+}
+
+/* clouds drift in lanes that avoid the wordmark rows */
+.cloud {
+  position: absolute;
+  background: #ffffffb8;
+  border-radius: var(--radius-pill);
+  filter: blur(1px);
+  animation: cloud-drift var(--ease-linear) infinite;
+}
+.cloud::before,
+.cloud::after {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: var(--radius-circle);
+}
+.cloud::before { width: 55%; height: 150%; left: 14%; bottom: 22%; }
+.cloud::after { width: 42%; height: 120%; right: 14%; bottom: 28%; }
+body[data-mode="night"] .cloud { opacity: 0.14; }
+body[data-mode="rain"] .cloud { background: #cabbdbcc; }
+body[data-mode="snow"] .cloud { background: #ffffffd9; }
+@keyframes cloud-drift {
+  from { transform: translateX(-220px); }
+  to { transform: translateX(110vw); }
+}
+
+/* rain + snow: real elements, generated once in os.js and parked here.
+   Three depth bands each, so the fall reads as volume instead of wallpaper. */
+#weather {
+  position: fixed;
+  inset: -14% 0 0 0;
+  z-index: var(--z-decor);
+  pointer-events: none;
+  overflow: hidden;
+}
+#weather .drop, #weather .flake { display: none; }
+body[data-mode="rain"] #weather .drop,
+body[data-mode="snow"] #weather .flake { display: block; }
+
+.drop {
+  position: absolute;
+  top: 0;
+  width: 1.4px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(180deg, transparent, var(--rain-ink));
+  animation: rain-fall var(--ease-linear) infinite;
+}
+.drop--mid { width: 1.8px; opacity: 0.85; }
+.drop--near { width: 2.4px; filter: blur(0.4px); }
+.drop--far { opacity: 0.5; filter: blur(0.3px); }
+@keyframes rain-fall {
+  to { transform: translate3d(-7vh, 128vh, 0); }
+}
+
+/* the cozy part: each flake falls, and sways independently while it falls */
+.flake {
+  position: absolute;
+  top: 0;
+  animation: snow-fall var(--ease-linear) infinite;
+}
+.flake > i {
+  display: block;
+  border-radius: var(--radius-circle);
+  background: var(--flake);
+  box-shadow: 0 0 7px rgba(255, 255, 255, 0.75);
+  animation: snow-sway var(--ease-standard) infinite alternate;
+}
+.flake--far > i { opacity: 0.55; filter: blur(1.4px); }
+.flake--mid > i { opacity: 0.8; filter: blur(0.5px); }
+@keyframes snow-fall {
+  to { transform: translate3d(0, 126vh, 0); }
+}
+@keyframes snow-sway {
+  from { transform: translateX(-15px); }
+  to { transform: translateX(15px); }
+}
+
+/* desktop sparkles reuse .sparkle from style.css, parked in a fixed layer */
+#decor {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-decor);
+  pointer-events: none;
+}
+@keyframes snow-poof {
+  0% { opacity: 1; transform: scale(1) translateY(0); }
+  100% { opacity: 0; transform: scale(1.7) translateY(-14px); }
+}
+@keyframes soft-bloom {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to { transform: translate3d(2%, 2%, 0) scale(1.08); }
+}
+@keyframes foil-sweep {
+  0% { background-position: 12% 24%, 80% 20%; }
+  100% { background-position: 88% 76%, 20% 80%; }
+}
+/* the crossing sweep drifts the other way and on a different clock, so the two
+   never settle into a repeating moire */
+@keyframes foil-cross {
+  0%, 100% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(14deg); }
+}
+@keyframes milk-swirl {
+  from { transform: translate3d(-3%, 1%, 0) rotate(-2deg) scale(1); }
+  to { transform: translate3d(3%, -2%, 0) rotate(2deg) scale(1.1); }
+}
+@keyframes arcade-floor {
+  to { background-position: 0 0, 0 54px; }
+}
+@keyframes crt-flicker {
+  0%, 96%, 100% { opacity: 1; }
+  97% { opacity: 0.88; }
+  98% { opacity: 1; }
+  99% { opacity: 0.93; }
+}
+@keyframes god-rays {
+  from { transform: rotate(-2.4deg); opacity: 0.8; }
+  to { transform: rotate(2.4deg); opacity: 1; }
+}
+@keyframes halo-breathe {
+  0%, 100% { opacity: 0.74; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}

@@ -1,0 +1,132 @@
+<!doctype html><meta charset="utf-8">
+<!-- The Open Graph card, 1200x630, rendered rather than drawn.
+
+     Icy's composition and copy. Everything else is the site's own cold boot
+     theme rather than an imitation of it: tokens.css and style.css are linked,
+     the body carries data-wall="base" data-mode="day", and the pills are
+     literally `class="glass"` -- the same rule the windows and the menu bar
+     use, reading the same --os-glass, --glass-edge, --glass-spec and
+     --glass-chrome. The sky is var(--sky-day), the grid is var(--grid-line) at
+     the 34px pitch os.css uses, the wordmark ramp is var(--t-art), and the
+     decoration is the theme's own --motif-1 and --motif-2 sprites at their own
+     --motif-op. Retheme the site and this card follows.
+
+     The wordmark is logoflat.png used as a MASK over that ramp, not logo.png
+     painted flat: the flat file is a single-colour silhouette, so the gradient
+     belongs to the theme and moves with it. Mask and filter sit on different
+     elements because CSS applies filter BEFORE mask -- both on one element and
+     the drop-shadow is computed from the unmasked rectangle, then cut away,
+     which is no shadow at all.
+
+     The eyebrow is justified to exactly the wordmark's 440px rather than
+     letter-spaced by eye, so the two share an edge at any font size.
+
+     TO CHANGE THE POSE: one src, on .pose below.
+
+     Regenerate with test/og-image.sh. Paths are absolute because this renders
+     from /test/, and test/ is excluded from the Pages build so it never ships. -->
+<link rel="stylesheet" href="/fonts.css">
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/style.css">
+<style>
+*{box-sizing:border-box;margin:0}
+body{width:1200px;height:630px;overflow:hidden;position:relative;background:var(--sky-day)}
+.grid{position:absolute;inset:0;background-image:
+  repeating-linear-gradient(0deg,var(--grid-line) 0 1px,transparent 1px 34px),
+  repeating-linear-gradient(90deg,var(--grid-line) 0 1px,transparent 1px 34px)}
+.bloom{position:absolute;width:820px;height:820px;left:-220px;top:-330px;border-radius:50%;
+  background:radial-gradient(circle,#ffffff8f 0%,#fff0 66%)}
+.bloom2{position:absolute;width:660px;height:660px;right:-140px;bottom:-280px;border-radius:50%;
+  background:radial-gradient(circle,#ffd9f052 0%,#fff0 68%)}
+/* the theme's own sprites, at the theme's own opacity */
+.m{position:absolute;background-repeat:no-repeat;background-size:contain;opacity:var(--motif-op)}
+.m1{background-image:var(--motif-1)}
+.m2{background-image:var(--motif-2)}
+/* Cropped, not fitted. A whole figure shrunk to fit a 630px band reads as a
+   sticker; one scaled past the frame and cut by it reads as someone standing
+   there, which is the same call the standee makes on the desktop. The webp is
+   trimmed to her outline, 0.4673 wide per unit of height and head at y=0, so
+   for a head top T and a left edge L:  top = T,  right = (1200-L) - 0.4673H.
+   T=30, L=722, H=1400 crops to roughly her top 42%, head to waist. L is set by
+   the pills, which are the widest thing in the column: the row measures 655 and
+   ends at 711, so 722 keeps her fingertips off it with a little air. */
+.pose{position:absolute;right:-176px;top:30px;height:1400px;width:auto;
+  filter:drop-shadow(0 2px 1px #4a2f7f2e) drop-shadow(0 20px 36px var(--os-shadow))}
+.col{position:absolute;left:56px;top:44px;width:620px;z-index:2;--s:0.9855}
+.eyebrow{font:700 calc(var(--s)*24px)/1 'Space Mono',monospace;color:var(--os-ink-dim);
+  /* tracked to the wordmark's edge, and it stays there at any --s because both
+     sides scale: Space Mono at 24 measures 311.83 x 24/15 = 498.9 over 34
+     characters against a 620 mark, so (620-498.9)/33 = 3.67, and s cancels.
+     The font went 17 -> 24 so the tracking would not have to: at 17 the same
+     edge needed 8px of it, which reads as a stunt rather than a label. */
+  letter-spacing:calc(var(--s)*3.67px);
+  margin:0 0 calc(var(--s)*18px) 1px;white-space:nowrap}
+.markwrap{position:relative;width:calc(var(--s)*620px);height:calc(var(--s)*204px);margin:0 0 calc(var(--s)*22px) -6px;
+  filter:drop-shadow(0 0 1px #7654acc9) drop-shadow(0 2px 3px #7654ac8f)
+         drop-shadow(0 0 14px #7654ac7a) drop-shadow(0 8px 20px #9e78d66b)}
+.mark{position:absolute;inset:0;
+  -webkit-mask:url('/images/logoflat.png') left center/contain no-repeat;
+  mask:url('/images/logoflat.png') left center/contain no-repeat;
+  background:var(--t-art)}
+/* DESIGN-SYSTEM.md 4.2: the display band is 24 / 34 / 48, stepping by root two.
+   A chat preview shows this card at about a third of its size, so it sits on the
+   display band throughout rather than the UI band: 48 headline, 30 lede, 24 sub,
+   24 label.
+
+   Every one of those is at its MEASURE cap, not at a size chosen by eye, and
+   they were measured rather than estimated. Bagel Fat One at 48 sets that
+   headline in 616px against a 620px column -- I had estimated 774 and broken it
+   over two lines for nothing. The lede is the one that does not reach its scale
+   step: 34 needs 695px, so it sits at 30.
+
+   Which leaves the block short vertically and full horizontally, and the right
+   answer to that is NOT to scale the type up past its measure. The wordmark is
+   an image and the hero of the card, so it takes the slack: 620 wide, the full
+   column. --s stays near 1 and exists only to trim the last few pixels. */
+h1{font:400 calc(var(--s)*48px)/1.15 'Bagel Fat One','Montserrat',system-ui,sans-serif;
+  color:var(--os-ink);margin-bottom:calc(var(--s)*20px);text-shadow:0 2px 0 #ffffffb3}
+.lede{font:700 calc(var(--s)*30px)/1.28 'Montserrat',system-ui,sans-serif;color:#4b3184;margin-bottom:calc(var(--s)*16px)}
+/* the line a link preview shrinks hardest, so it is the one that has to hold */
+.sub{font:600 calc(var(--s)*24px)/1.34 'Montserrat',system-ui,sans-serif;color:var(--os-ink);margin-bottom:calc(var(--s)*30px)}
+.pill{display:inline-flex;align-items:center;gap:calc(var(--s)*13px);border-radius:999px;
+  padding:calc(var(--s)*14px) calc(var(--s)*24px);
+  font:700 calc(var(--s)*19px)/1 'Space Mono',monospace;color:var(--os-ink);letter-spacing:.02em;
+  /* one line, always. The column is narrower than the gap to the figure, so a
+     pill may run past it; wrapping inside a pill is what looks broken. */
+  white-space:nowrap}
+.dot{flex:0 0 auto;width:calc(var(--s)*13px);height:calc(var(--s)*13px);border-radius:50%;
+  background:#4fd6a0;box-shadow:0 0 0 4px #4fd6a033}
+/* sized to its content, not to the column: .pill inherits overflow:hidden
+   from style.css, so a row that does not fit CLIPS its own text rather than
+   spilling. There is room -- the column ends at 676, the figure starts at
+   700 -- but only if the row is allowed to ask for it. */
+.pills{display:flex;align-items:center;gap:calc(var(--s)*14px);width:max-content}
+.social{gap:calc(var(--s)*13px);padding:calc(var(--s)*13px) calc(var(--s)*20px)}
+.social .g{flex:0 0 auto;width:calc(var(--s)*24px);height:calc(var(--s)*24px);color:var(--os-ink);display:block}
+.social .bar{flex:0 0 auto;width:1px;height:calc(var(--s)*24px);background:#3d2a6333}
+</style>
+<body data-wall="base" data-mode="day">
+<div class="grid"></div><div class="bloom"></div><div class="bloom2"></div>
+<div class="m m1" style="left:726px;top:52px;width:34px;height:34px"></div>
+<div class="m m1" style="left:1128px;top:214px;width:22px;height:22px;opacity:.34"></div>
+<div class="m m1" style="left:600px;top:392px;width:19px;height:19px;opacity:.4"></div>
+<div class="m m2" style="left:806px;top:556px;width:24px;height:22px;opacity:.32"></div>
+<div class="m m2" style="left:1052px;top:78px;width:18px;height:17px;opacity:.3"></div>
+<div class="m m1" style="left:512px;top:592px;width:16px;height:16px;opacity:.3"></div>
+<div class="m m1" style="left:660px;top:150px;width:15px;height:15px;opacity:.3"></div>
+<div class="m m2" style="left:1164px;top:436px;width:20px;height:18px;opacity:.28"></div>
+<div class="m m1" style="left:892px;top:602px;width:20px;height:20px;opacity:.3"></div>
+<div class="m m2" style="left:646px;top:520px;width:16px;height:15px;opacity:.26"></div>
+<div class="m m1" style="left:1176px;top:112px;width:14px;height:14px;opacity:.3"></div>
+<img class="pose" src="/test/og-pose.webp" alt="">
+<div class="col">
+  <p class="eyebrow">&#10022; INTERNET ANGEL &middot; SINCE FOREVER &#10022;</p>
+  <div class="markwrap"><div class="mark"></div></div>
+  <h1>new quest unlocked: hire me</h1>
+  <p class="lede">community manager + brand designer.<br>i wear many hats. all of them fit.</p>
+  <p class="sub">crypto class of 2021, chronically online since.</p>
+  <div class="pills">
+    <span class="pill glass"><span class="dot"></span>available &#10022; CET &#10022; remote</span>
+    <span class="pill glass social"><svg class='g' viewBox='0 0 24 24'><path fill='currentColor' d='M18.9 2H22l-7.5 8.6L23 22h-6.8l-5.3-6.9L4.8 22H2l8-9.1L1.5 2h7l4.8 6.3L18.9 2zm-1.2 18h1.9L7.4 4H5.4l12.3 16z'/></svg> <svg class='g' viewBox='0 0 24 24'><path fill='currentColor' d='M21.5 4.5 2.7 11.9c-1.2.5-1.2 1.2-.2 1.5l4.8 1.5 1.8 5.6c.2.6.4.8.9.8.5 0 .7-.2 1-.5l2.4-2.3 4.9 3.6c.9.5 1.5.2 1.8-.8l3.2-15.2c.3-1.2-.4-1.7-1.4-1.4zM8.8 14.5l9.4-6c.4-.2.8 0 .5.3l-7.6 6.9-.3 3.4-1.5-3.9z'/></svg> <svg class='g' viewBox='0 0 24 24'><path fill='currentColor' d='M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.927 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.055c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.955 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z'/></svg> <span class="bar"></span> @icygobrrr</span>
+  </div>
+</div>

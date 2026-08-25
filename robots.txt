@@ -1,0 +1,12 @@
+# icybear.fun
+# Everything here is meant to be found. The only paths worth keeping out of an
+# index are the ones that are not pages: build sources and the throwaway copies
+# the screenshot harnesses write next to the real files.
+
+User-agent: *
+Allow: /
+Disallow: /test/
+Disallow: /supabase/
+Disallow: /_
+
+Sitemap: https://icybear.fun/sitemap.xml

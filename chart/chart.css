@@ -1,3 +1,314 @@
+/* The sky, not the old site's fixed gradient. Without this the token swap
+   makes dark themes WORSE than before, not better: the card goes dark glass
+   while the page stays light lavender, so arcade at night reads as a bug.
+   This is only the sky colour -- clouds, rain and snow are the desktop's, and
+   they stay there until the chart earns them. --os-sky is set by tokens.css
+   from data-wall + data-mode, so all twenty combinations arrive at once. */
+body {
+  background: var(--os-sky, linear-gradient(120deg, #e8d5f7 0%, #d3d3f9 50%, #c0d8f8 100%));
+  background-attachment: fixed;
+  color: var(--os-ink);
+}
+
+/* the grid was tuned for one light lavender page; --grid-line flips per theme */
+.grid-overlay { background-image:
+  linear-gradient(var(--grid-line) 1px, transparent 1px),
+  linear-gradient(90deg, var(--grid-line) 1px, transparent 1px); }
+
+/* ---------------------------------------------------------------------
+   BOOT — the chart is diagnosis.exe opening, so it powers on like a screen
+   rather than just appearing.
+
+   Justified by the fiction, not by performance: this page renders in a couple
+   of hundred milliseconds and inventing a wait to decorate would be a real
+   cost for a fake benefit. So it runs ONCE per session (chart.js gates it on
+   sessionStorage), lasts half a second, and never blocks input -- the intro
+   button is clickable from the first frame.
+
+   Deliberately not the crash screen's crt-on: that one collapses to a line
+   and flares, which reads as failure. This opens.
+   --------------------------------------------------------------------- */
+body[data-boot] .cbar {
+  animation: chart-boot var(--motion-slow) var(--ease-enter) both;
+}
+body[data-boot] .chart-main {
+  animation: chart-boot var(--motion-slow) var(--ease-enter) 0.10s both;
+}
+
+/* Four beats, not two: a bright seed, the horizontal snap open, an overshoot
+   past 100% as the tube settles, then rest. The overshoot is what the first
+   version was missing -- a pure ease-out to 1 reads as a fade, and a fade is
+   what you do not notice. */
+@keyframes chart-boot {
+  0%   { opacity: 0; transform: scale(1.34, 0.004); filter: brightness(4.4) saturate(0.25) blur(1px); }
+  18%  { opacity: 1; transform: scale(1.34, 0.004); filter: brightness(4.4) saturate(0.25) blur(1px); }
+  46%  { transform: scale(1.02, 0.9); filter: brightness(1.9) saturate(0.8) blur(0); }
+  66%  { transform: scale(0.995, 1.035); filter: brightness(1.2) saturate(1.05); }
+  84%  { transform: scale(1.002, 0.99); filter: none; }
+  100% { transform: none; filter: none; }
+}
+
+/* The tube's own glow, blooming out of the centre line and dying back. This is
+   the pizazz: the screen lights the room for a moment before it settles. */
+body[data-boot]::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(120% 40% at 50% 50%,
+    rgba(255, 236, 252, 0.85) 0%,
+    rgba(206, 190, 255, 0.45) 34%,
+    transparent 70%);
+  animation: chart-bloom var(--motion-slow) var(--ease-standard) both;
+}
+
+@keyframes chart-bloom {
+  0%   { opacity: 0; transform: scaleY(0.02); }
+  16%  { opacity: 1; transform: scaleY(0.05); }
+  44%  { opacity: 0.55; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(1.25); }
+}
+
+/* one scanline crossing the screen, the way a tube settles */
+body[data-boot]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    transparent 0 42%,
+    rgba(255, 255, 255, 0.62) 48%,
+    rgba(210, 240, 255, 0.28) 52%,
+    transparent 58% 100%);
+  animation: chart-sweep var(--motion-slow) var(--ease-standard) both;
+}
+
+@keyframes chart-sweep {
+  0%   { transform: translateY(-108%); opacity: 0; }
+  22%  { opacity: 0.95; }
+  100% { transform: translateY(108%); opacity: 0; }
+}
+
+/* ==========================================================================
+   OS CHROME — the bar and the card surface, borrowed from the desktop so the
+   chart reads as an app on the same machine rather than a sibling website.
+   Every colour below is a token from tokens.css; nothing here is hardcoded.
+   ========================================================================== */
+
+.cbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap:  var(--space-lg);
+  height: 34px;
+  margin:  0 0 var(--space-xl);
+  padding:  0 var(--space-lg);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  font: 700 var(--text-body)/var(--lh-body) var(--font-mono);
+  color: var(--os-ink);
+  border-bottom: 1px solid var(--glass-edge);
+}
+
+.cbar__home, .cbar__hire {
+  padding:  var(--space-xs) var(--space-lg);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--motion-state) var(--ease-standard);
+}
+
+.cbar__home:hover { background: var(--t-bar-chip); color: inherit; }
+
+.cbar__app { opacity: 0.72; letter-spacing: var(--track-tight); }
+
+/* centred on the BAR, not between its neighbours -- same absolute trick #hire
+   uses on the desktop, so the chip sits in the same place on both pages */
+.cbar__hire {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cbar__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap:  var(--space-lg);
+  opacity: 0.85;
+}
+.cbar__right #cbar-state { display: flex; align-items: center; gap:  var(--space-sm); }
+#cbar-clock { position: relative; font-variant-numeric: tabular-nums; }
+
+.cbar__sound {
+  display: inline-flex;
+  padding:  0 var(--space-hair);
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.cbar__sound img { display: block; width: 15px; height: 15px; }
+.cbar__sound:focus-visible { outline: 2px solid var(--os-accent); outline-offset: 2px; }
+
+/* The bar clock shows the VISITOR's time, same as the desktop's -- a site that
+   quietly reports a foreign timezone just looks broken. Icy's own hour is the
+   thing worth surfacing, so it lives on hover instead of replacing it. */
+#cbar-clock[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  padding:  var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  font: 700 var(--text-caption)/var(--lh-caption) var(--font-mono);
+  letter-spacing: var(--track-label);
+  color: #fff;
+  background: #3a2a63e6;
+  pointer-events: none;
+}
+
+/* the desktop's tooltip, same shape and same delay-free reveal */
+.cbar__hire[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding:  var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  font: 700 var(--text-caption)/var(--lh-caption) var(--font-mono);
+  letter-spacing: var(--track-label);
+  color: #fff;
+  background: #3a2a63e6;
+  pointer-events: none;
+}
+.cbar__hire:hover { transform: translateX(-50%) translateY(-1px); }
+
+/* ---------------------------------------------------------------------
+   THE INFO WINDOW — the desktop's four-tab window, as a sheet.
+   --------------------------------------------------------------------- */
+.info {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:  var(--space-xl);
+  background: #1b103ca8;
+  backdrop-filter: var(--glass-veil);
+  -webkit-backdrop-filter: var(--glass-veil);
+  opacity: 0;
+  transition: opacity var(--motion-exit) var(--ease-standard);
+}
+.info[data-open] { opacity: 1; }
+.info[hidden] { display: none; }
+
+.info__card {
+  width: min(560px, 100%);
+  max-height: min(86vh, 760px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transform: translateY(10px) scale(0.985);
+  transition: transform var(--motion-exit) var(--ease-standard);
+}
+.info[data-open] .info__card { transform: none; }
+
+.info__host { display: flex; flex-direction: column; min-height: 0; }
+.info__host .wbody { overflow: auto; }
+
+@media (max-width: 520px) {
+  .info { padding: 0; }
+  .info__card { width: 100%; max-height: 100%; height: 100%; border-radius: 0; }
+}
+
+/* the same chip the desktop wears, same green, same --os-ink */
+.cbar__hire {
+  display: flex;
+  align-items: center;
+  gap:  var(--space-md);
+  padding:  var(--space-xs) var(--space-lg) var(--space-xs) var(--space-lg);
+  border-radius: var(--radius-pill);
+  letter-spacing: var(--track-label);
+  font-size: var(--text-caption);
+  background: rgba(126, 224, 171, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(126, 224, 171, 0.55);
+}
+.cbar__hire:hover { background: rgba(126, 224, 171, 0.34); color: inherit; }
+
+.cbar__home:focus-visible,
+.cbar__hire:focus-visible { outline: 2px solid var(--os-accent); outline-offset: 2px; }
+
+/* the narrow label is the exception, so the wide one is the default */
+.cbar__home--narrow { display: none; }
+
+/* An absolutely centred chip does not know what is beside it. On a wide bar
+   that is the point -- it lines up with the desktop's own chip whatever the
+   neighbours weigh -- but at 390px it landed directly on top of `icy: online`
+   and printed `foribyreonline`.
+   Taking it out of `absolute` fixed the collision and lost the centring, which
+   was the wrong trade. A three-column grid gets both: the chip owns the middle
+   column, so it is centred on the BAR and physically cannot overlap what sits
+   either side of it. Everything else here is about making the row always fit --
+   the app name and the clock are the two things a phone can do without (the dot
+   and the word carry the state), and the state text may truncate.
+   `.cbar__app, not .cbar__title` -- the markup has said __app since the bar was
+   written, so the rule this replaces never matched and the name never hid. */
+@media (max-width: 620px) {
+  .cbar {
+    display: grid;
+    /* minmax(0, 1fr), not 1fr. A 1fr track's automatic minimum is the
+       min-content of what is in it, so at 360px the side tracks refused to
+       shrink, the row overflowed, and the chip came back to sit on top of the
+       state -- the exact bug this grid replaced, three columns later. */
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap:  var(--space-sm);
+  }
+  .cbar__app { display: none; }
+  .cbar__home {
+    justify-self: start;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .cbar__home--wide { display: none; }
+  .cbar__home--narrow { display: inline; }
+  .cbar__hire {
+    position: static;
+    left: auto;
+    transform: none;
+    justify-self: center;
+  }
+  .cbar__hire:hover { transform: translateY(-1px); }
+  #cbar-clock { display: none; }
+  .cbar__right {
+    margin-left: 0;
+    justify-self: end;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .cbar__right #cbar-state { min-width: 0; }
+  #cbar-state-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* Below this the row genuinely does not fit: back + chip + state + sound wants
+   428px of a 360px bar, and when it does not fit the chip overflows its own
+   grid track and lands back on the state -- the collision this whole block
+   exists to prevent. Something has to go, and the state's WORD is the most
+   redundant of the four: the dot beside it is the same signal in one glyph, and
+   it keeps its tooltip. */
+@media (max-width: 430px) {
+  #cbar-state-text { display: none; }
+}
+
 /* icybear alignment chart — page-specific layout only.
    Brand tokens, fonts, and component classes (.holo-surface, .button, .pill,
    .sparkle, .section-heading, .grid-overlay, cursors) all come from
@@ -23,76 +334,17 @@
      of pinning to an edge unrelated to where the content actually sits. */
   max-width: 1060px;
   margin: 0 auto;
-  padding: 56px 24px 0;
+  padding:  56px var(--space-2xl) 0;
   justify-content: center;
 }
 
-/* No pill wrapper here, unlike its siblings — this is meant to read as
-   the actual hero wordmark floating in, the same way it floats bare (no
-   card/border) on the homepage, just sized down to match the row's pill
-   height instead of boxed to match their shape. */
-.site-header__logo {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-}
 
-/* Exact same treatment as .hero__logo on the homepage, just scaled down —
-   mask+gradient directly on this element (not a separate child layer),
-   plus the same two sparkle/shine overlay children. Sized by height, not
-   width, so it lines up with the pill row's own height. */
-.site-header__logo-mark {
-  position: relative;
-  display: block;
-  height: 38px;
-  width: auto;
-  aspect-ratio: 698 / 230;
-  -webkit-mask-image: url('../images/logoflat.png');
-  mask-image: url('../images/logoflat.png');
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: left center;
-  mask-position: left center;
-  background: linear-gradient(160deg, #fff8fc 0%, #f8bfe6 35%, #b48ee9 68%, #8fc2f4 100%);
-}
 
-.site-header__logo-sparkle {
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(circle at 12% 30%, rgba(255, 255, 255, 0.95) 0%, transparent 3.5%),
-    radial-gradient(circle at 45% 15%, rgba(255, 255, 255, 0.9) 0%, transparent 3%),
-    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.95) 0%, transparent 3.2%),
-    radial-gradient(circle at 90% 25%, rgba(255, 255, 255, 0.85) 0%, transparent 2.8%),
-    radial-gradient(circle at 30% 75%, rgba(255, 255, 255, 0.85) 0%, transparent 2.8%);
-  background-size: 220% 220%;
-  mix-blend-mode: soft-light;
-  opacity: 0.55;
-  pointer-events: none;
-  animation: holo-sparkle-drift 8s ease-in-out infinite reverse;
-}
 
-.site-header__logo-shine {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(
-    115deg,
-    transparent 15%,
-    rgba(255, 255, 255, 0.95) 28%,
-    rgba(255, 180, 235, 0.9) 38%,
-    rgba(180, 210, 255, 0.9) 48%,
-    rgba(255, 240, 170, 0.9) 58%,
-    rgba(255, 180, 235, 0.9) 68%,
-    transparent 82%
-  );
-  background-size: 260% 260%;
-  background-position: var(--holo-x) var(--holo-y);
-  mix-blend-mode: overlay;
-  opacity: 0.85;
-  pointer-events: none;
-}
+
+
+
+
 
 /* ---------------------------------------------------------------------
    Screens / state machine shell
@@ -102,13 +354,13 @@
   position: relative;
   max-width: 640px;
   margin: 0 auto;
-  padding: 22px 16px 24px;
+  padding:  var(--space-2xl) var(--space-xl) var(--space-2xl);
 }
 
 .chart-screen {
   opacity: 0;
   transform: translateY(14px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition: opacity var(--motion-enter) var(--ease-standard), transform var(--motion-enter) var(--ease-standard);
 }
 .chart-screen--active {
   opacity: 1;
@@ -127,14 +379,14 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 22px;
-  padding: 48px 0 24px;
+  gap:  var(--space-2xl);
+  padding:  48px 0 var(--space-2xl);
 }
 
 .chart-intro__eyebrow {
-  font: 700 14px var(--font-mono);
-  letter-spacing: 4px;
-  color: var(--purple-accent);
+  font: 700 var(--text-lead)/var(--lh-lead) var(--font-mono);
+  letter-spacing: var(--track-widest);
+  color: var(--os-accent);
 }
 
 .chart-intro__title {
@@ -145,19 +397,15 @@
      instead (same font, same plain-background context). */
   font: 400 clamp(38px, 9vw, 60px) var(--font-display);
   line-height: 1.05;
-  color: var(--purple-dark);
+  color: var(--os-ink);
   text-shadow: 0 2px 0 rgba(255, 255, 255, 0.7);
 }
 
-.chart-intro__subheader {
-  font: 700 15px var(--font-mono);
-  letter-spacing: 2px;
-  color: var(--purple-mid);
-}
+
 
 .chart-intro__copy {
-  font: 500 17px/1.6 var(--font-body);
-  color: var(--purple-text);
+  font: 400 var(--text-subhead)/1.6 var(--font-body);
+  color: var(--os-ink);
   max-width: 440px;
 }
 
@@ -168,18 +416,24 @@
 .chart-screen--quiz {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap:  var(--space-2xl);
+  /* The card was landing in the top half with 254-321px of empty viewport under
+     it, because nothing told the quiz to take up the height it had. Centring
+     the whole group -- progress, card, back -- keeps it a unit. dvh, not vh, so
+     a phone's collapsing address bar does not shift it mid-quiz. */
+  min-height: calc(100dvh - 170px);
+  justify-content: center;
 }
 
 .chart-progress {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap:  var(--space-xl);
 }
 
 .chart-progress__readout {
-  font: 700 14px var(--font-mono);
-  color: var(--purple-mid);
+  font: 700 var(--text-lead)/var(--lh-lead) var(--font-mono);
+  color: var(--os-ink-dim);
   white-space: nowrap;
 }
 
@@ -187,7 +441,7 @@
   position: relative;
   flex: 1;
   height: 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.5);
   border: 1.5px solid #fff;
   overflow: hidden;
@@ -198,9 +452,9 @@
   z-index: 3;
   height: 100%;
   width: 10%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: linear-gradient(90deg, var(--button-top), var(--button-bottom));
-  transition: width 0.3s ease;
+  transition: width var(--motion-exit) var(--ease-standard);
   overflow: hidden;
 }
 .chart-progress__fill::after {
@@ -209,7 +463,7 @@
   inset: 0;
   background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.75) 50%, transparent 70%);
   background-size: 200% 100%;
-  animation: chart-progress-shimmer 2.2s ease-in-out infinite;
+  animation: chart-progress-shimmer 2.2s var(--ease-standard) infinite;
 }
 @keyframes chart-progress-shimmer {
   0% { background-position: 120% 0; }
@@ -226,39 +480,41 @@
      scrollLeft reset in chart.js backstops any remaining edge cases. */
   overflow: hidden;
   overflow: clip;
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
 }
 
 .chart-track {
   display: flex;
-  transition: transform 0.3s ease;
+  transition: transform var(--motion-exit) var(--ease-standard);
 }
 
 .chart-slide {
   flex: 0 0 100%;
   width: 100%;
   box-sizing: border-box;
-  padding: 44px 24px;
+  padding:  44px var(--space-2xl);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 30px;
+  gap:  var(--space-3xl);
   text-align: center;
+  --scale-max: 560px;
   min-height: 340px;
-  background: var(--card-bg);
-  border: 1.5px solid #fff;
-  border-radius: 24px;
+  /* .glass in the markup paints the surface now: same backdrop blur, inset
+     spec highlight and glass edge as every window on the desktop. A flat white
+     rectangle was the single loudest tell that this was a different product. */
+  border-radius: var(--radius-xl);
   opacity: 0.3;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--motion-exit) var(--ease-standard);
 }
 .chart-slide.is-active {
   opacity: 1;
 }
 
 .chart-slide__statement {
-  font: 800 25px/1.4 var(--font-body);
-  color: var(--purple-dark);
+  font: 800 var(--text-title)/1.4 var(--font-body);
+  color: var(--os-ink);
   max-width: 460px;
 }
 
@@ -269,7 +525,7 @@
 .chart-range {
   position: relative;
   width: 100%;
-  max-width: 520px;
+  max-width: var(--scale-max);
   height: 14px;
 }
 .chart-range__track {
@@ -279,20 +535,21 @@
   right: 6px;
   height: 3px;
   transform: translateY(-50%);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: linear-gradient(90deg, rgba(185, 157, 240, 0.3), var(--purple-accent) 55%, var(--pink) 100%);
 }
 .chart-range__notches {
   position: absolute;
   inset: 0;
   display: grid;
+  grid-template-columns: repeat(var(--opts, 5), 1fr);
 }
 .chart-range__notches span {
   justify-self: center;
   align-self: center;
   width: 9px;
   height: 9px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: #fff;
   border: 2px solid var(--purple-accent);
   box-shadow: 0 2px 6px rgba(140, 100, 200, 0.3);
@@ -304,21 +561,36 @@
 /* Scale (1-5, never->always) — always one row, grid not flex-wrap, so
    there's never an orphaned option wrapping onto its own line. */
 .chart-scale {
+  /* --opts is set by chart.js from the question's own option count, so the
+     column count lives in one place instead of being written into the element's
+     style attribute where CSS could not override it. The mobile rule below
+     needs to override it, which is the whole reason it is a property. */
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(var(--opts, 5), 1fr);
+  gap:  var(--space-md);
   width: 100%;
-  max-width: 520px;
+  /* One number for the scale and the range above it. They MUST match: the
+     notches are a grid of the same column count, so any drift between the two
+     widths slides every notch off the pill it belongs to. 560 rather than 520
+     because 520 gave each pill a 90px content box and `sometimes` needs 90 --
+     it wrapped to two lines on every viewport, at every size, in nine of the
+     ten questions. */
+  max-width: var(--scale-max);
 }
 
 .chart-scale__option {
   min-width: 0;
-  padding: 10px 4px;
-  font-size: 13px;
+  padding:  var(--space-lg) var(--space-xs);
+  font-size: var(--text-lead);
+  /* .pill's label tracking, dropped. At 1px across nine glyphs it was 9 of the
+     px that pushed `sometimes` onto a second line, and tracking earns its keep
+     on uppercase labels, which these are not. */
+  letter-spacing: normal;
   line-height: 1.2;
   text-align: center;
+  /* NOT break-word. A word that does not fit should overflow and be caught by
+     the test, not silently hyphenate itself into `someti / mes`. */
   white-space: normal;
-  overflow-wrap: break-word;
-  word-break: break-word;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -328,7 +600,7 @@
   background: linear-gradient(180deg, var(--button-top), var(--button-bottom));
   border-color: #fff;
   color: #fff;
-  animation: chart-option-pulse 0.4s ease;
+  animation: chart-option-pulse var(--motion-enter) var(--ease-standard);
 }
 @keyframes chart-option-pulse {
   0% { transform: scale(1); box-shadow: 0 4px 14px rgba(140, 100, 200, 0.3); }
@@ -340,7 +612,7 @@
 .chart-scale--choice {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap:  var(--space-md);
   width: 100%;
   max-width: 360px;
 }
@@ -352,10 +624,10 @@
   align-self: flex-start;
   background: none;
   border: none;
-  font: 700 14px var(--font-mono);
-  letter-spacing: 1px;
-  color: var(--purple-mid);
-  padding: 6px 4px;
+  font: 700 var(--text-lead)/var(--lh-lead) var(--font-mono);
+  letter-spacing: var(--track-label);
+  color: var(--os-ink-dim);
+  padding:  var(--space-sm) var(--space-xs);
 }
 .chart-back:hover {
   color: var(--pink);
@@ -373,7 +645,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 30px;
+  gap:  var(--space-3xl);
   min-height: 46vh;
   text-align: center;
 }
@@ -382,12 +654,12 @@
   position: relative;
   width: 130px;
   height: 130px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: linear-gradient(160deg, #fff, #f6b8e4 30%, #a98ee8 65%, #8fc2f4);
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: chart-orb-pulse 2.2s ease-in-out infinite;
+  animation: chart-orb-pulse 2.2s var(--ease-standard) infinite;
 }
 
 @keyframes chart-orb-pulse {
@@ -396,10 +668,10 @@
 }
 
 .chart-loading__glyph {
-  font: 700 46px var(--font-mono);
+  font: 700 var(--text-hero)/var(--lh-hero) var(--font-mono);
   color: #fff;
   text-shadow: 0 2px 10px rgba(90, 63, 143, 0.4);
-  animation: chart-orb-spin 6s linear infinite;
+  animation: chart-orb-spin 6s var(--ease-linear) infinite;
 }
 
 @keyframes chart-orb-spin {
@@ -408,15 +680,15 @@
 }
 
 .chart-loading__text {
-  font: 700 16px var(--font-mono);
-  letter-spacing: 1.5px;
-  color: var(--purple-mid);
+  font: 700 var(--text-subhead)/var(--lh-subhead) var(--font-mono);
+  letter-spacing: var(--track-wide);
+  color: var(--os-ink-dim);
 }
 
 .chart-loading__dots span {
   display: inline-block;
   opacity: 0.3;
-  animation: chart-dot-blink 1.4s ease-in-out infinite;
+  animation: chart-dot-blink 1.4s var(--ease-standard) infinite;
 }
 .chart-loading__dots span:nth-child(2) { animation-delay: 0.2s; }
 .chart-loading__dots span:nth-child(3) { animation-delay: 0.4s; }
@@ -434,7 +706,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap:  var(--space-md);
   padding-top: 0;
 }
 
@@ -453,10 +725,34 @@
    frame is inline-block so it shrink-wraps to the canvas's actual size,
    giving both overlays a coordinate space that always matches the canvas
    1:1 regardless of viewport. */
+/* #capcard, mirrored: the card IS the canvas with foil laid over it, not a
+   canvas sitting inside a padded frame. And crucially `overflow: hidden` --
+   .holo-surface::after is inset:-15% by design, so without clipping the foil
+   escaped and painted a second rounded rectangle around the whole card. */
 .chart-canvas-frame {
+  --glare-x: 50%;
+  --glare-y: 50%;
+  --glare-a: 0;
   position: relative;
   display: inline-block;
+  line-height: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--elev-window) var(--os-shadow);
 }
+.chart-canvas-frame::before { opacity: 0.18; }
+.chart-canvas-frame::after {
+  opacity: 0.42;
+  -webkit-mask-image: radial-gradient(116% 108% at 50% 50%, #000 58%, transparent 96%);
+  mask-image: radial-gradient(116% 108% at 50% 50%, #000 58%, transparent 96%);
+}
+
+/* The proof-of-visit card's frame, verbatim: a holo border with a soft-light
+   glare tracking the pointer. The chart's card was a bare rounded canvas with
+   a drop shadow, which is most of why the two did not look like the same
+   object. script.js already drives --glare-x / --glare-y on .holo-surface. */
+
+.chart-canvas-frame:hover { --glare-a: 1; }
 
 /* Live glowing pulse marking the visitor's actual plotted dot — positioned
    over the static canvas via JS-computed percentages (drawCompass's exact
@@ -467,16 +763,16 @@
   position: absolute;
   width: 26px;
   height: 26px;
-  margin: -13px 0 0 -13px;
-  border-radius: 50%;
+  margin:  calc(var(--space-lg) * -1) 0 0 calc(var(--space-lg) * -1);
+  border-radius: var(--radius-circle);
   pointer-events: none;
   opacity: 0;
   box-shadow: 0 0 0 0 rgba(196, 92, 174, 0.55);
-  transition: opacity 0.3s ease;
+  transition: opacity var(--motion-exit) var(--ease-standard);
 }
 .chart-screen--result.chart-screen--active .chart-dot-glow.is-ready {
   opacity: 1;
-  animation: chart-dot-pulse 2.4s ease-out infinite;
+  animation: chart-dot-pulse 2.4s var(--ease-standard) infinite;
 }
 @keyframes chart-dot-pulse {
   0% { box-shadow: 0 0 0 0 rgba(196, 92, 174, 0.55); }
@@ -499,14 +795,14 @@
   left: 50%;
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: #fff;
   box-shadow: 0 0 8px 3px rgba(255, 255, 255, 0.9), 0 0 16px 6px rgba(210, 170, 255, 0.7);
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.3);
 }
 .chart-burst__spark.is-flying {
-  animation: chart-burst-fly 1s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  animation: chart-burst-fly var(--motion-slow) var(--ease-standard) forwards;
 }
 /* Gold instead of white/lilac for clearpilled results — the burst is
    already bigger for a "rare drop," but a distinct color (not just more of
@@ -519,28 +815,6 @@
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
   18% { opacity: 1; }
   100% { opacity: 0; transform: translate(calc(-50% + var(--bx)), calc(-50% + var(--by))) scale(1); }
-}
-
-/* Staggered cascade — the controls below the card fade/rise in slightly
-   after it, one beat after another, instead of all appearing at once. */
-.chart-pfp-group,
-.chart-pfp-clear,
-.chart-share-controls,
-.chart-share-note {
-  opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-.chart-screen--result.chart-screen--active .chart-pfp-group { transition-delay: 0.22s; }
-.chart-screen--result.chart-screen--active .chart-pfp-clear { transition-delay: 0.22s; }
-.chart-screen--result.chart-screen--active .chart-share-controls { transition-delay: 0.32s; }
-.chart-screen--result.chart-screen--active .chart-share-note { transition-delay: 0.42s; }
-.chart-screen--result.chart-screen--active .chart-pfp-group,
-.chart-screen--result.chart-screen--active .chart-pfp-clear,
-.chart-screen--result.chart-screen--active .chart-share-controls,
-.chart-screen--result.chart-screen--active .chart-share-note {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 /* Hard requirement (mobile only): the result view fits one phone screen
@@ -571,17 +845,22 @@
   display: block;
   width: auto;
   height: auto;
-  max-width: min(94vw, 480px);
+  /* 100% of the COLUMN, not a slice of the viewport. Sizing a card against vw
+     while it lives inside a 640px column is how it ended up 692px wide inside a
+     608px parent and clipped down the right-hand side -- which cut the name,
+     the diagnosis line and the hydration tag all at the same x. */
+  max-width: 100%;
   max-height: 60vh;
   aspect-ratio: 1080 / 1350;
-  border-radius: 18px;
-  box-shadow: 0 16px 40px rgba(140, 100, 200, 0.35);
+  border-radius: var(--radius-lg);
+  position: relative;
+  z-index: 1;
   background: #fff;
   /* Entrance pop on reveal — same scale(0.96)->scale(1) pattern the
      lightbox already uses elsewhere on the site, not a new one. */
   transform: scale(0.94);
   opacity: 0;
-  transition: transform 0.45s ease, opacity 0.45s ease;
+  transition: transform var(--motion-enter) var(--ease-standard), opacity var(--motion-enter) var(--ease-standard);
 }
 .chart-screen--result.chart-screen--active #chart-canvas {
   transform: scale(1);
@@ -594,108 +873,20 @@
   #chart-canvas {
     width: auto;
     height: auto;
-    max-width: 78vw;
+    max-width: 100%;
     max-height: min(82vh, 920px);
   }
 }
-
-/* One joined pill instead of three separate ones competing for attention:
-   an icon-only upload trigger, the x-handle input (the primary path — this
-   card is built to be posted on x, so pulling the pfp from there is the
-   obvious default), and "go", all inside a single holo-surface shell. */
-.chart-pfp-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: fit-content;
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 5px;
-  border-radius: 999px;
-  background: var(--pill-bg);
-  border: 1.5px solid #fff;
-}
-
-.chart-pfp-group__upload {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  color: var(--purple-mid);
-  flex: 0 0 auto;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-.chart-pfp-group__upload:hover {
-  color: var(--pink);
-  background: rgba(255, 255, 255, 0.7);
-}
-.chart-pfp-group__upload svg {
-  width: 17px;
-  height: 17px;
-}
-
-.chart-pfp-group__input {
-  font: 700 13px var(--font-mono);
-  padding: 8px 4px;
-  border: none;
-  background: none;
-  color: var(--purple-dark);
-  width: 108px;
-  min-width: 0;
-}
-.chart-pfp-group__input:focus {
-  outline: none;
-}
-.chart-pfp-group__input::placeholder {
-  color: var(--purple-accent-2);
-}
-
-.chart-pfp-group__go {
-  flex: 0 0 auto;
-  border: none;
-  border-radius: 999px;
-  padding: 9px 18px;
-  font: 700 13px var(--font-mono);
-  letter-spacing: 0.5px;
-  color: #fff;
-  background: linear-gradient(180deg, var(--button-top), var(--button-bottom));
-}
-
-.chart-pfp-clear {
-  display: block;
-  margin: 6px auto 0;
-  font-size: 12px;
-  padding: 7px 14px;
-}
-.chart-pfp-clear[hidden] {
-  display: none;
-}
-
-.chart-share-note {
-  font: 500 12px var(--font-body);
-  color: var(--purple-accent-2);
-  text-align: center;
-  max-width: 340px;
-  margin: 0 auto;
-}
-
-.chart-share-controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-
-.chart-share-controls .button {
-  font-size: 13px;
-  padding: 9px 18px;
+/* Desktop really does have room to spare -- but the room has to be given to the
+   COLUMN, which is what the card is actually measured against. Only while the
+   result is on screen, so the intro and the quiz keep their 640px measure. */
+.chart-main:has(.chart-screen--result.chart-screen--active) {
+  max-width: 820px;
 }
 
 .chart-share-hint {
-  font: 500 12px var(--font-body);
-  color: var(--purple-mid);
+  font: 400 var(--text-body)/var(--lh-body) var(--font-body);
+  color: var(--os-ink-dim);
   text-align: center;
   min-height: 14px;
   line-height: 1.3;
@@ -705,36 +896,71 @@
    noscript fallback — the quiz cannot function at all without JS
 --------------------------------------------------------------------- */
 
+/* It holds a real page now rather than one sentence, so it is set like one:
+   left-aligned body at a readable measure, the display face on the heading. */
 .chart-noscript {
-  max-width: 460px;
-  margin: 100px auto;
-  text-align: center;
-  font: 700 18px var(--font-mono);
-  color: var(--purple-dark);
+  max-width: 560px;
+  margin: 80px auto;
+  text-align: left;
+  font: 400 var(--text-lead)/1.6 var(--font-body);
+  color: var(--os-ink);
   background: rgba(255, 255, 255, 0.75);
   border: 1.5px solid #fff;
-  border-radius: 18px;
-  padding: 28px 24px;
+  border-radius: var(--radius-lg);
+  padding:  var(--space-3xl) var(--space-2xl);
 }
+.chart-noscript h1 {
+  font: 400 var(--text-title)/1.15 var(--font-display);
+  margin: 0 0 var(--space-lg);
+}
+.chart-noscript p { margin: 0 0 var(--space-lg); }
+.chart-noscript p:last-child { margin-bottom: 0; }
+.chart-noscript b { font-weight: 700; color: var(--os-accent); }
+.chart-noscript a { color: var(--os-accent); }
 
 /* ---------------------------------------------------------------------
    Focus states — visible focus-visible outline on every interactive
    element, matching the existing .work-item__frame:focus-visible pattern.
---------------------------------------------------------------------- */
-
-.chart-scale__option:focus-visible,
+--------------------------------------------------------------------- */.chart-scale__option:focus-visible,
 .chart-back:focus-visible,
-.chart-pfp-group__input:focus-visible,
-.chart-pfp-group__go:focus-visible,
-.chart-pfp-clear:focus-visible,
-.chart-share-controls .button:focus-visible,
 #chart-start:focus-visible {
   outline: 3px solid var(--purple-accent);
   outline-offset: 3px;
 }
-.chart-pfp-group__upload:focus-within {
-  outline: 3px solid var(--purple-accent);
-  outline-offset: 3px;
+
+/* ---------------------------------------------------------------------
+   RESULT CONTROLS - the proof-of-visit card's shapes, reused.
+
+   The previous version of this comment said os.css "cannot be loaded on this
+   page, so the three rules travel here" and then copied them in full. That
+   stopped being true when the info window arrived: chart/index.html loads
+   ../os.css. So the copies were live alongside the originals, winning on load
+   order, and had already drifted -- .cap__note was #f0e4ff there and
+   var(--os-ink-dim) here.
+
+   What is left below is only what genuinely differs. os.css sizes and lays
+   these out; the chart adds the vertical rhythm of a page rather than a modal,
+   and the one colour that has to change because this page is light where the
+   capture overlay is dark.
+   --------------------------------------------------------------------- */
+.cap__id   { margin:  var(--space-xl) auto 0; }
+.cap__note { margin:  var(--space-lg) auto 0; color: var(--os-ink-dim); }
+.cap__btns { margin-top:  var(--space-xl); }
+
+/* the cascade the result screen had, repointed at the new containers */
+.cap__id, .cap__note, .cap__btns {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity var(--motion-enter) var(--ease-standard), transform var(--motion-enter) var(--ease-standard);
+}
+.chart-screen--result.chart-screen--active .cap__id   { transition-delay: 0.22s; }
+.chart-screen--result.chart-screen--active .cap__note { transition-delay: 0.32s; }
+.chart-screen--result.chart-screen--active .cap__btns { transition-delay: 0.42s; }
+.chart-screen--result.chart-screen--active .cap__id,
+.chart-screen--result.chart-screen--active .cap__note,
+.chart-screen--result.chart-screen--active .cap__btns {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* ---------------------------------------------------------------------
@@ -746,6 +972,10 @@
 --------------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
+  body[data-boot] .cbar,
+  body[data-boot] .chart-main,
+  body[data-boot]::before,
+  body[data-boot]::after,
   .holo-surface::before,
   .holo-surface::after,
   .sparkle,
@@ -763,10 +993,9 @@
   .chart-screen,
   .chart-progress__fill,
   #chart-canvas,
-  .chart-pfp-group,
-  .chart-pfp-clear,
-  .chart-share-controls,
-  .chart-share-note {
+  .cap__id,
+  .cap__note,
+  .cap__btns {
     transition: none !important;
     transition-delay: 0s !important;
   }
@@ -779,17 +1008,32 @@
    Mobile
 --------------------------------------------------------------------- */
 
+/* 620 is measured, not chosen: five pills across need a 98px pill to fit
+   `sometimes` on one line, which needs a 522px scale, a 570px card and a 602px
+   viewport. Below that the row cannot hold the word at any font size worth
+   reading, so the scale becomes a column -- which is the better phone control
+   anyway: full-width tap targets, nothing to wrap. The range indicator goes
+   with it, since a horizontal intensity bar means nothing above a vertical
+   list. */
+@media (max-width: 620px) {
+  .chart-scale:not(.chart-scale--choice) {
+    grid-template-columns: 1fr;
+    max-width: 360px;
+  }
+  .chart-range { display: none; }
+}
+
 @media (max-width: 480px) {
   .chart-slide {
-    padding: 28px 14px;
+    padding:  var(--space-3xl) var(--space-xl);
     min-height: 300px;
   }
   .chart-slide__statement {
-    font-size: 21px;
+    font-size: var(--text-title);
   }
   .chart-scale__option {
-    padding: 11px 3px;
-    font-size: 11.5px;
+    padding:  var(--space-lg) var(--space-xs);
+    font-size: var(--text-body);
   }
 
   /* Result screen: the chart itself gets priority over its own chrome on
@@ -799,19 +1043,28 @@
     max-height: 50vh;
   }
   .chart-main {
-    padding: 14px 12px 16px;
+    padding:  var(--space-xl) var(--space-lg) var(--space-xl);
   }
   .chart-screen--result {
-    gap: 6px;
+    gap:  var(--space-sm);
   }
-  .chart-share-controls {
-    gap: 6px;
+  .cap__btns {
+    gap:  var(--space-sm);
   }
-  .chart-share-controls .button {
-    font-size: 12px;
-    padding: 8px 14px;
+  .cap__btns .button {
+    font-size: var(--text-body);
+    padding:  var(--space-md) var(--space-xl);
   }
-  .chart-share-note {
-    font-size: 11px;
+  .cap__note {
+    font-size: var(--text-body);
   }
+  .cap__id { width: min(300px, 84vw); }
 }
+
+/* the save offer, quieter than PRESS START: it is the second thing you want */
+.chart-load {
+  margin-top:  calc(var(--space-sm) * -1);
+  font: 700 var(--text-body)/var(--lh-body) var(--font-mono);
+  letter-spacing: var(--track-tight);
+}
+.chart-load[hidden] { display: none; }

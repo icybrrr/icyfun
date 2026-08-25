@@ -5,6 +5,131 @@
 (function () {
   'use strict';
 
+
+  /* ---------------------------------------------------------------------
+     THEME — the desktop writes its wallpaper and weather to localStorage,
+     and tokens.css keys every colour off body[data-wall] / body[data-mode].
+     Reading the same two keys is the whole of "match the site's theme": all
+     twenty looks arrive for free, and a visitor who picked strawberry next
+     door keeps it here instead of being thrown back to the factory palette.
+     Defaults match the desktop's, so a first-time visitor sees base/day.
+     --------------------------------------------------------------------- */
+  /* ---------------------------------------------------------------------
+     THE BAR + THE INFO WINDOW
+     --------------------------------------------------------------------- */
+  (function chrome() {
+    var bar = document.querySelector('.cbar');
+    if (!bar) return;
+
+    /* icy is in Vienna, so the status follows her clock, not the visitor's --
+       the same rule the desktop uses, and the reason both can say "sleeping"
+       while it is the middle of your afternoon. */
+    function vienna() {
+      return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Vienna' }));
+    }
+    function tick() {
+      var cet = vienna();
+      /* 8..23 on her clock, the same window icyAwake() uses on the desktop --
+         the two must not disagree about whether she is up. */
+      var awake = cet.getHours() >= 8 && cet.getHours() < 23;
+      var fmt = { hour: 'numeric', minute: '2-digit' };
+      var clock = document.getElementById('cbar-clock');
+      var state = document.getElementById('cbar-state');
+      var text = document.getElementById('cbar-state-text');
+      if (clock) {
+        clock.textContent = new Date().toLocaleTimeString([], fmt);   /* yours */
+        clock.setAttribute('data-tip', 'icy time · ' + cet.toLocaleTimeString([], fmt) + ' CET');
+      }
+      if (text) text.textContent = awake ? 'icy: online' : 'icy: sleeping';
+      if (state) state.toggleAttribute('data-asleep', !awake);
+    }
+    tick();
+    setInterval(tick, 15000);
+
+    /* one engine, one preference: sfx.js reads the same key the desktop writes,
+       so muting on one side is muting on the other */
+    paintSound('../');
+    bar.addEventListener('click', function (e) {
+      if (!e.target.closest('[data-act="sound"]')) return;
+      setSoundPref(!soundIsOn(), '../');
+    });
+
+    /* the window is fetched once, on first open, not at load: nobody should
+       pay for markup they may never ask to see */
+    var sheet = document.getElementById('info');
+    var host = sheet.querySelector('.info__host');
+    var title = document.getElementById('info-title');
+    var mounted = null;
+
+    function open(tab) {
+      sheet.hidden = false;
+      sheet.setAttribute('aria-hidden', 'false');
+      requestAnimationFrame(function () { sheet.setAttribute('data-open', ''); });
+      if (!mounted) {
+        mounted = mountInfo(host, '../').catch(function (err) {
+          host.innerHTML = '<p class="cap__note">could not load that just now. ' +
+            '<a href="../">open it on the desktop</a> instead.</p>';
+          if (window.console) console.error(err);
+        });
+      }
+      mounted.then(function () { if (tab) showInfoTab(host, tab); syncTitle(); });
+    }
+    function syncTitle() {
+      var on = host.querySelector('.wtab.is-on');
+      if (on && title) title.textContent = (on.querySelector('.wtab__full') || on).textContent.trim();
+    }
+    function close() {
+      sheet.removeAttribute('data-open');
+      sheet.setAttribute('aria-hidden', 'true');
+      setTimeout(function () { sheet.hidden = true; }, 240);
+    }
+
+    document.getElementById('cbar-hire').addEventListener('click', function (e) {
+      e.preventDefault();
+      open('resume');                       /* the tab someone hiring wants */
+    });
+    document.getElementById('info-close').addEventListener('click', close);
+    sheet.addEventListener('click', function (e) { if (e.target === sheet) close(); });
+    host.addEventListener('click', function (e) {
+      if (e.target.closest('.wtab')) setTimeout(syncTitle, 0);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !sheet.hidden) close();
+    });
+  }());
+
+  /* The same scene the desktop stands in, from the same file. Built before the
+     theme is applied so the layers are already in place when data-wall lands
+     and CSS decides which of them this theme shows. */
+  buildSky();
+
+  (function applyTheme() {
+    var NS = 'icybear.v1.';
+    function read(key, fallback) {
+      try {
+        var raw = localStorage.getItem(NS + key);
+        return raw === null ? fallback : JSON.parse(raw);
+      } catch (e) { return fallback; }
+    }
+    var wall = read('wall', 'base');
+    var mode = read('mode', 'auto');
+    if (mode === 'auto') {
+      /* The VISITOR's clock, 21 to 7, byte for byte what effMode() uses on the
+         desktop. This used to read Vienna at 20 to 6, under a comment claiming
+         it matched the desktop -- two different clocks AND two different
+         thresholds, so walking from the desktop into the chart could flip day
+         to night for anyone in a wide band of timezones. Which of the two is
+         "right" is a real question, but they have to be the same, and the
+         desktop is the one people arrive on.
+         Whether ICY is awake is a different question with a different answer,
+         and that one does follow Vienna -- see the bar's tick(). */
+      var h = new Date().getHours();
+      mode = (h >= 21 || h < 7) ? 'night' : 'day';
+    }
+    document.body.dataset.wall = wall;
+    document.body.dataset.mode = mode;
+  }());
+
   // ---------------------------------------------------------------------
   // Tuning constants (open decisions, flagged in quiz-page-spec.md §15 —
   // no playtest data exists yet, these are reasonable starting points).
@@ -152,7 +277,7 @@
 
   var FLAVOR = {
     hydration: {
-      low: 'hydration: dehydrated. drink water. i Will be checking.',
+      low: 'hydration: dehydrated. drink water. i will be checking.',
       mid: 'hydration: not bad. also not good. reflect.',
       high: "hydration: hydrated. i'm proud of you. keep it up."
     },
@@ -177,6 +302,7 @@
   var currentScreen = 'intro';
   var currentResult = null;
   var pfpImage = null;
+  var pfpHandle = '';        /* printed on the card above the result name */
   var pfpTimeoutId = null;
   var fontsReady = false;
 
@@ -197,7 +323,6 @@
   var startBtn = document.getElementById('chart-start');
   var canvas = document.getElementById('chart-canvas');
   var ctx = canvas ? canvas.getContext('2d') : null;
-  var pfpFileInput = document.getElementById('pfp-file');
   var pfpHandleInput = document.getElementById('pfp-handle');
   var pfpHandleGoBtn = document.getElementById('pfp-handle-go');
   var pfpClearBtn = document.getElementById('pfp-clear');
@@ -223,7 +348,7 @@
     if (!track) return;
     QUESTIONS.forEach(function (q, i) {
       var slide = document.createElement('div');
-      slide.className = 'chart-slide';
+      slide.className = 'chart-slide glass';
       slide.setAttribute('data-index', String(i));
 
       var statement = document.createElement('p');
@@ -247,7 +372,7 @@
         range.appendChild(rangeTrack);
         var notches = document.createElement('div');
         notches.className = 'chart-range__notches';
-        notches.style.gridTemplateColumns = 'repeat(' + optionCount + ', 1fr)';
+        notches.style.setProperty('--opts', String(optionCount));
         for (var n = 0; n < optionCount; n++) {
           var notch = document.createElement('span');
           notches.appendChild(notch);
@@ -258,7 +383,7 @@
 
       var scale = document.createElement('div');
       scale.className = 'chart-scale' + (isChoice ? ' chart-scale--choice' : '');
-      if (!isChoice) scale.style.gridTemplateColumns = 'repeat(' + optionCount + ', 1fr)';
+      if (!isChoice) scale.style.setProperty('--opts', String(optionCount));
       scale.setAttribute('role', 'group');
       scale.setAttribute('aria-label', q.text);
 
@@ -274,6 +399,7 @@
         btn.setAttribute('data-question-index', String(i));
         btn.setAttribute('data-value', String(opt.value));
         btn.addEventListener('click', function () {
+          sfx('answer');            /* also the haptic tick on a phone */
           answerQuestion(i, opt.value);
         });
         scale.appendChild(btn);
@@ -402,11 +528,14 @@
   function resetToIntro() {
     answers = new Array(QUESTIONS.length).fill(null);
     activeIndex = 0;
-    pfpImage = null;
     currentResult = null;
-    if (pfpHandleInput) pfpHandleInput.value = '';
-    if (pfpFileInput) pfpFileInput.value = '';
-    if (pfpClearBtn) pfpClearBtn.hidden = true;
+    /* The portrait and the handle SURVIVE a rediagnose, deliberately. Same
+       person, same account: someone going again wants their own face on the
+       second card too, and `clear pfp` is sitting right there if they do not.
+       What was broken was not that reset kept them -- it is that reset forgot
+       the IMAGE and the input but not the HANDLE, so the next card printed
+       `@you is a ...` over the default sparkle. A half-forget, which is worse
+       than either forgetting or keeping. */
     if (shareHint) shareHint.textContent = '';
     if (dotGlowEl) dotGlowEl.classList.remove('is-ready');
     if (burstEl) burstEl.innerHTML = '';
@@ -557,6 +686,7 @@
   // Canvas render
   // ---------------------------------------------------------------------
   var CARD_W = 1080;
+  var FOOTER_SIZE = 74;   /* read by render() and by drawFooter() */
   var CARD_H = 1350;
 
   var PALETTE = {
@@ -725,6 +855,14 @@
     context.textBaseline = 'alphabetic';
   }
 
+  /* "a" or "an", off the first sound of the result. Written against the word
+     that follows it, not the whole name: "unc gamer" starts with a vowel
+     LETTER but takes "an" anyway here, which is the common reading, and the
+     handful of results this quiz can produce are all regular. */
+  function article(name) {
+    return /^[aeiou]/i.test(String(name).trim()) ? 'an' : 'a';
+  }
+
   function render() {
     if (!ctx || !currentResult) return;
     var result = currentResult;
@@ -785,9 +923,29 @@
     ctx.shadowBlur = 0;
     var nameX = pfpCx + pfpRadius + 32;
     var nameLineHeight = nameSize * 1.08;
-    wrapTextVCentered(ctx, result.displayName, nameX, headerCenterY, nameMaxWidth, nameLineHeight, 'left');
+    /* The name does NOT move when a handle appears. Centring the PAIR against
+       the pfp was the obvious thing and it was wrong: everything under the
+       header is positioned off headerCenterY, so shifting the name pushed it
+       into the diagnosis line while the pfp and the line both stayed put.
+       The handle goes in the empty space above instead, and nothing else
+       on the card knows it is there. */
+    wrapTextVCentered(ctx, result.displayName, nameX, headerCenterY,
+                      nameMaxWidth, nameLineHeight, 'left');
     ctx.shadowColor = 'transparent';
     ctx.shadowOffsetY = 0;
+
+    if (pfpHandle) {
+      /* Pinned to the PFP, not to the name: its cap-top lines up with the top
+         of the circle, so the handle and the name read as one block hanging
+         off the portrait rather than a caption floating above it. Space Mono's
+         cap height is ~0.7em, so the baseline sits that far below the top. */
+      var HSIZE = 30;
+      var handleBaseline = (headerCenterY - pfpRadius) + HSIZE * 0.7;
+      ctx.font = '700 ' + HSIZE + 'px "Space Mono"';
+      ctx.fillStyle = PALETTE.pink;
+      ctx.textAlign = 'left';
+      ctx.fillText('@' + pfpHandle + ' is ' + article(result.displayName), nameX, handleBaseline);
+    }
 
     // Diagnosis line
     ctx.fillStyle = PALETTE.purpleText;
@@ -818,9 +976,17 @@
     var tagsBlockHeight = tagsList.length * tagRowHeight + (tagsList.length - 1) * tagGap;
 
     var GAP_COMPASS_TO_TAGS = 70;
-    var GAP_TAGS_TO_FOOTER = 54;
-    var FOOTER_ALLOWANCE = 52;
-    var reservedBottom = GAP_COMPASS_TO_TAGS + tagsBlockHeight + GAP_TAGS_TO_FOOTER + FOOTER_ALLOWANCE + pad;
+    /* The wordmark is pinned to the CARD, not stacked after the tags. Driving
+       it off the tag block is what let it drift: it was too high at size 34
+       and then straight through the bottom border at 74, because the tags do
+       not know how tall the thing below them is.
+       Artwork is drawn at cap-height 74 * 1.16 = 86, sitting from y-70 to
+       y+16, so a baseline 46px above the panel edge leaves ~30px of margin. */
+    var FOOTER_BASE = wordmarkBaseline(CARD_H, pad, FOOTER_SIZE);
+    var FOOTER_TOP = FOOTER_BASE - FOOTER_SIZE * 1.16 * 0.82;
+    /* what the compass may not grow into: the wordmark, plus air above it */
+    var FOOTER_ALLOWANCE = (CARD_H - pad - FOOTER_TOP) + 26;
+    var reservedBottom = GAP_COMPASS_TO_TAGS + tagsBlockHeight + FOOTER_ALLOWANCE + pad;
 
     var availableForCompass = CARD_H - compassY - reservedBottom;
     var compassSize = Math.max(520, Math.min(720, availableForCompass));
@@ -835,7 +1001,7 @@
     var tagsHeight = drawTags(ctx, tagsTopY, CARD_W / 2, CARD_W - pad * 2 - 80, tagsList);
 
     // Footer branding — hard requirement: bake URL + brand mark into pixels.
-    drawFooter(ctx, tagsTopY + tagsHeight + GAP_TAGS_TO_FOOTER);
+    drawFooter(ctx, FOOTER_BASE);
 
     refreshCachedBlob();
   }
@@ -1092,27 +1258,16 @@
     return tagsList.length * chipHeight + (tagsList.length - 1) * chipGap;
   }
 
+  /* The same footer the proof-of-visit card draws: the logo ARTWORK tinted
+     through a foil gradient, with glints and three shadow passes, rather than
+     the url set in Bagel Fat One. wordmark.js owns it so the two cards cannot
+     drift again. Falls back to type on its own if the art has not loaded. */
   function drawFooter(context, y) {
-    context.textAlign = 'center';
-    context.font = '400 34px "Bagel Fat One"';
-    var text = '✦ icybear.fun ✦';
-    var w = context.measureText(text).width;
-    // Same color family as the site nav's wordmark, but dropping its
-    // near-white first stop — that reads fine in CSS against the nav's
-    // own background but was nearly illegible at this size against the
-    // card's light background. Starts on a more saturated pink instead,
-    // plus a soft dark-tinted shadow for edge definition.
-    var grad = context.createLinearGradient(CARD_W / 2 - w / 2, 0, CARD_W / 2 + w / 2, 0);
-    grad.addColorStop(0, '#e88fd0');
-    grad.addColorStop(0.5, '#b48ee9');
-    grad.addColorStop(1, '#7ba3e8');
-    context.save();
-    context.shadowColor = 'rgba(120,80,180,0.3)';
-    context.shadowBlur = 8;
-    context.shadowOffsetY = 2;
-    context.fillStyle = grad;
-    context.fillText(text, CARD_W / 2, y);
-    context.restore();
+    /* 74, matching the proof-of-visit card on an identical 1080x1350 canvas.
+       This was 34, carried over from the old type-set footer, which put the
+       logo at under half the size the other card uses -- barely legible once
+       the card is scaled down to fit a screen. */
+    drawWordmark(context, CARD_W / 2, y, FOOTER_SIZE, document.getElementById('mark-img'));
   }
 
   // ---------------------------------------------------------------------
@@ -1155,8 +1310,55 @@
     });
   }
 
+  // icybearOS reads the latest diagnosis out of this key so the desktop can show
+  // it and the capture card can use it. Retakes overwrite; nothing is ever faked.
+  /* `card` and `v` ride along inside the SAME object rather than getting their
+     own key, for one reason: os.js's "forget me on this device" clears a fixed
+     list of keys, and a key it does not know about would survive a request to
+     be forgotten. name/line/at keep their exact shape, so the desktop reading
+     this is untouched -- it simply ignores the extra fields. */
+  var SAVE_V = 1;
+
+  function rememberResult(result) {
+    try {
+      localStorage.setItem('icybear.v1.diag', JSON.stringify({
+        name: result.displayName,
+        line: result.diagnosisLine,
+        at: new Date().toISOString(),
+        v: SAVE_V,
+        handle: pfpHandle || '',
+        card: result
+      }));
+    } catch (e) { /* private mode. the chart still works. */ }
+  }
+
+  /* Two different questions, and conflating them hid the buttons from everyone
+     who had already taken the quiz before this shipped:
+
+       hasTaken()  did they do this at all? true for ANY stored diagnosis,
+                   including the {name, line, at} ones written before saves
+                   carried a full card. Enough to stop saying "press start".
+       loadSave()  can this build REDRAW their card? needs the full result at
+                   a version it understands. An older save cannot be upgraded
+                   -- name and line alone will not draw a compass -- so those
+                   visitors get "play again" without the view button. */
+  function hasTaken() {
+    try { return !!(JSON.parse(localStorage.getItem('icybear.v1.diag')) || {}).name; }
+    catch (e) { return false; }
+  }
+
+  function loadSave() {
+    try {
+      var raw = JSON.parse(localStorage.getItem('icybear.v1.diag'));
+      if (!raw || raw.v !== SAVE_V || !raw.card || !raw.card.displayName) return null;
+      return raw;
+    } catch (e) { return null; }
+  }
+
   function showResult() {
+    sfx('reveal');
     currentResult = computeResult();
+    rememberResult(currentResult);
     if (loadingLineEl) {
       loadingLineEl.textContent = LOADING_LINES[Math.floor(Math.random() * LOADING_LINES.length)];
     }
@@ -1173,18 +1375,6 @@
   // ---------------------------------------------------------------------
   // PFP handling
   // ---------------------------------------------------------------------
-  function setPfpFromFile(file) {
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      var img = new Image();
-      img.onload = function () { pfpImage = img; showPfpClear(); render(); };
-      img.onerror = function () { pfpImage = null; render(); };
-      img.src = e.target.result;
-    };
-    reader.onerror = function () { pfpImage = null; };
-    reader.readAsDataURL(file);
-  }
 
   function showPfpClear() {
     if (pfpClearBtn) pfpClearBtn.hidden = false;
@@ -1192,6 +1382,9 @@
 
   function setPfpFromHandle(handleRaw) {
     var handle = (handleRaw || '').replace(/^@/, '').trim();
+    pfpHandle = handle;
+    render();                 /* the handle shows even while the pfp loads */
+    if (currentResult) rememberResult(currentResult);
     if (!handle) return;
     if (pfpTimeoutId) window.clearTimeout(pfpTimeoutId);
 
@@ -1202,7 +1395,7 @@
     function fail() {
       if (settled) return;
       settled = true;
-      if (shareHint) shareHint.textContent = "couldn't load that pfp, no worries — card still works.";
+      if (shareHint) shareHint.textContent = "couldn't load that pfp, no worries. card still works.";
     }
 
     img.onload = function () {
@@ -1220,14 +1413,27 @@
     // header (only the final /x/ response does), which silently fails the
     // crossOrigin='anonymous' load every time. Hitting /x/ directly avoids
     // the redirect entirely.
+    /* unavatar.io is a third party, and it necessarily learns the handle and the
+       IP. It does not also need the page: no-referrer stops the URL going with
+       the request. Independent of crossOrigin, which is about reading the
+       pixels back out of the canvas. */
+    img.referrerPolicy = 'no-referrer';
     img.src = 'https://unavatar.io/x/' + encodeURIComponent(handle);
   }
 
-  function clearPfp() {
+  /* One place to forget the portrait. It used to be written out twice -- here
+     and in resetToIntro -- and the copies drifted: reset cleared the IMAGE and
+     the input but not the HANDLE, so pressing `again` left the card still
+     printing `@you is a ...` over the default sparkle. Same list, one copy. */
+  function clearPfpState() {
     pfpImage = null;
-    if (pfpFileInput) pfpFileInput.value = '';
+    pfpHandle = '';
     if (pfpHandleInput) pfpHandleInput.value = '';
     if (pfpClearBtn) pfpClearBtn.hidden = true;
+  }
+
+  function clearPfp() {
+    clearPfpState();
     render();
   }
 
@@ -1259,20 +1465,20 @@
   // see shareToX() for why that ordering specifically matters.
   function writeBlobToClipboard(blob, btn) {
     if (!blob || !navigator.clipboard || !window.ClipboardItem) {
-      if (shareHint) shareHint.textContent = "your browser can't copy images directly — try download instead.";
+      if (shareHint) shareHint.textContent = "your browser can't copy images directly. try download instead.";
       return;
     }
     navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]).then(function () {
       if (shareHint) shareHint.textContent = 'copied! paste it into your tweet.';
       flashButtonState(btn, 'copied ✓');
     }).catch(function () {
-      if (shareHint) shareHint.textContent = "couldn't copy automatically — try download instead.";
+      if (shareHint) shareHint.textContent = "couldn't copy automatically. try download instead.";
     });
   }
 
   function copyImage() {
     if (!navigator.clipboard || !window.ClipboardItem) {
-      if (shareHint) shareHint.textContent = "your browser can't copy images directly — try download instead.";
+      if (shareHint) shareHint.textContent = "your browser can't copy images directly. try download instead.";
       return;
     }
     if (cachedBlob) {
@@ -1333,7 +1539,7 @@
     if (cachedBlob) {
       writeBlobToClipboard(cachedBlob, btnShareX);
     } else if (shareHint) {
-      shareHint.textContent = "your browser can't copy images directly — try download instead.";
+      shareHint.textContent = "your browser can't copy images directly. try download instead.";
     }
     window.open(intentUrl, '_blank', 'noopener');
   }
@@ -1385,12 +1591,6 @@
   if (btnShareX) btnShareX.addEventListener('click', shareToX);
   if (btnDownload) btnDownload.addEventListener('click', downloadImage);
 
-  if (pfpFileInput) {
-    pfpFileInput.addEventListener('change', function (e) {
-      var file = e.target.files && e.target.files[0];
-      if (file) setPfpFromFile(file);
-    });
-  }
   if (pfpHandleGoBtn) {
     pfpHandleGoBtn.addEventListener('click', function () {
       setPfpFromHandle(pfpHandleInput ? pfpHandleInput.value : '');
@@ -1424,8 +1624,52 @@
     });
   }
 
+  /* ---------------------------------------------------------------------
+     THE SAVE — someone who has taken this before is not starting.
+     --------------------------------------------------------------------- */
+  (function offerSave() {
+    var startBtn = document.getElementById('chart-start');
+    var loadBtn = document.getElementById('chart-load');
+    if (!startBtn || !loadBtn) return;
+
+    if (hasTaken()) startBtn.textContent = '▸ PLAY AGAIN';
+
+    var saved = loadSave();
+    if (!saved) return;
+    loadBtn.hidden = false;
+    loadBtn.textContent = 'view your last save ✦';
+
+    loadBtn.addEventListener('click', function () {
+      sfx('tap');
+      currentResult = saved.card;
+      /* straight to the card: the loading beat exists to cover computing a
+         result, and there is nothing to compute for one already sitting in
+         storage. Making someone wait for a card they have seen is padding. */
+      showScreen('result');
+      if (saved.handle) {
+        if (pfpHandleInput) pfpHandleInput.value = saved.handle;
+        setPfpFromHandle(saved.handle);   /* re-fetches the avatar, and renders */
+      } else {
+        render();
+      }
+      triggerBurst();
+    });
+  }());
+
   var appEl = document.getElementById('app');
   if (appEl) appEl.style.display = ''; // only reveal the app shell once JS has actually run
+
+  /* Boot on every arrival. This was gated to once per session, on the theory
+     that going back and forth shouldn't replay it -- but the effect is 740ms
+     and it is the reason the page is fun to land on, so gating it meant it was
+     seen exactly once and never again. Phones replay their app-open animation
+     every single time for the same reason. */
+  (function boot() {
+    document.body.setAttribute('data-boot', '');
+    var done = function () { document.body.removeAttribute('data-boot'); };
+    document.querySelector('.chart-main').addEventListener('animationend', done, { once: true });
+    setTimeout(done, 1200);         /* backstop if the animation never fires */
+  }());
   buildSlides();
   showScreen('intro');
 })();

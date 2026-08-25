@@ -1,2 +1,55 @@
 .claude/
 .DS_Store
+
+# Source art and working files. These are kept on disk but never deployed:
+# The host serves everything in the repo whether or not a page links to it,
+# and design sources carry metadata that a rendered asset does not need.
+images/inv *
+images/og-pose.png
+images/logo.svg
+images/os/icybearos.svg
+images/os/icybearos.png
+# the original wordmark save; the png is smaller and is what ships
+icybearfun.svg
+
+# Superseded by .webp (74% smaller, alpha bit-identical, no banding). Kept on
+# disk as the lossless source but never deployed.
+images/os/icy-stand-*.png
+images/os/icy-sit*.png
+images/os/icy-lock.png
+images/os/icy-wawa.png
+images/os/icy-avatar.png
+images/os/icy-avatar2.png
+images/os/mobile-lockscreen.png
+# the heart Icy drew, traced into geometry by test/icons.py; the png is the source
+images/os/icons/heart.png
+
+# Working files that should not be versioned at all. These are different from
+# the _config.yml exclude list: that one keeps things out of the published
+# site, this keeps them out of the repo entirely.
+#
+# Note: '#' only opens a comment at the START of a line here. A trailing one
+# becomes part of the pattern and the rule silently matches nothing.
+
+# one-off CORS probe against the edge functions
+_cors_probe.html
+# a debug capture of the share card
+card-base-day-full.png
+# Figma's export name; icybear-cv.pdf is the identical file that ships
+CV - Icy.pdf
+
+# Visual regression captures. Regenerated on demand, never versioned.
+test/.shots/
+
+# the throwaway page and pose crop test/wallpaper.py renders through
+_wp.html
+_wp-pose.webp
+
+# Badge design scaffolding. Kept on disk, never in the repo: this is working
+# material for an unfinished process -- 42 explored motifs, notes on which ones
+# were rejected and why, and a handoff tool for a workflow that may not survive
+# the week. The repo is public and it is attached to a portfolio; none of that
+# belongs in it. The finished badges in images/os/badges/*.svg are the artefact.
+test/motifs.py
+test/place.py
+images/os/badges/blank/

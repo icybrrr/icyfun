@@ -1,0 +1,18 @@
+# What Vercel must not upload, and therefore must not serve.
+#
+# This used to be a Jekyll _config.yml, written on the assumption that GitHub
+# Pages served this site. It does not: Pages is disabled on the repo and
+# icybear.fun answers with `server: Vercel`. Jekyll never runs, so that file
+# excluded nothing and every path below would have been fetchable from the live
+# domain. The CNAME file in the repo root is left over from the same era.
+#
+# This does NOT hide anything. The repo is public, so all of it stays readable
+# on github.com/icybrrr/icyfun. It only keeps these paths off the website, where
+# they have no business being. Anything that should not exist at all belongs in
+# .gitignore instead.
+
+# The backend: schema, row level security, and the two edge functions.
+supabase
+
+# The test suite. Runs with `node test/<name>.test.js`, needs no install.
+test
