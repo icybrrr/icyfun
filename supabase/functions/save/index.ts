@@ -77,10 +77,33 @@ const NAME_ALNUM = /[\p{L}\p{N}]/u;
 const LEET: Record<string, string> = {
   "1":"i","!":"i","|":"i","3":"e","4":"a","@":"a","0":"o",
   "5":"s","$":"s","7":"t","+":"t","8":"b","9":"g","(":"c" };
+/* THE LIST GREW. It was built for slurs and it stopped there, so ordinary
+   profanity walked straight through: a snake board signed `Asshole` was the
+   first thing a real tester tried and it worked.
+
+   EVERY ADDITION IS EXACT-MATCH ONLY. Nothing here joins SEVERE, which is the
+   substring pass and is the reason this filter once rejected 731 ordinary
+   words. Three roots were deliberately REFUSED because of what they collapse
+   to: `ass` becomes `as`, `kkk` becomes `k`, and `boobs` becomes `bobs`,
+   which is somebody's handle. `nonce` was refused for a different reason --
+   zero dictionary collisions, but it is a cryptographic term and this site's
+   audience is crypto.
+
+   PLURALS STAY EXPLICIT. Stripping a trailing s before matching would catch
+   every plural in one line and would also block the surnames Cocks and
+   Dicks, which is the Peacock bug returning by another door. */
 const BLOCK_RAW = ["nigger", "nigga", "faggot", "fag", "retard", "kike", "spic", "chink",
-  "tranny", "dyke", "gook", "beaner", "wetback", "raghead", "towelhead",
-  "rape", "cunt", "whore", "slut", "bitch", "fuck", "shit",
-  "dick", "cock", "pussy", "nazi", "hitler", "kys", "pedo", "incel"];
+                   "tranny", "dyke", "gook", "beaner", "wetback", "raghead", "towelhead",
+                   "rape", "cunt", "whore", "slut", "bitch", "fuck", "shit", "dick",
+                   "cock", "pussy", "nazi", "hitler", "kys", "pedo", "incel", "asshole",
+                   "assholes", "asshat", "arsehole", "dumbass", "jackass", "blowjob",
+                   "handjob", "rimjob", "cumshot", "deepthroat", "dildo", "jizz", "boner",
+                   "penis", "vagina", "anus", "scrotum", "tits", "titties", "smegma",
+                   "queef", "masturbate", "porn", "pornhub", "hentai", "bastard", "wanker",
+                   "wank", "twat", "bollocks", "bellend", "minge", "skank", "douchebag",
+                   "cocksucker", "motherfucker", "fucker", "fuckboy", "fuckface",
+                   "shithead", "bullshit", "rapist", "pedophile", "molest", "groomer",
+                   "heil", "fuhrer"];
 
 // Pass 2 and pass 3 operate on this subset only. An entry earns a place when an
 // embedded match is worth a rare false positive. Deliberately not `fuck`,

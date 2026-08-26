@@ -527,20 +527,37 @@ window.OS_STRINGS = {
     greet: '<b>icy@angelnet</b> ~ type `help` and behave. up arrow remembers.',
     prompt: '<b>icy@angelnet</b> ~ ',
     unknown: 'unknown command. it happens.',
+    /* A KNOWN VERB WITH AN UNKNOWN TARGET IS NOT AN UNKNOWN COMMAND. `cat
+       nothing.txt` used to answer "unknown command", which tells someone their
+       verb was wrong when the verb was the one thing they got right. Pointing
+       at `ls` is the answer to the question they were actually asking. */
+    noFile: 'no file called {t}. try ls.',
+    noDir: 'no folder called {t}. try ls.',
     /* Two lines: things that DO something, then how to poke around. Nothing
        here names a secret — no cheat codes, no `ls -a`, no `crash`, no `gn` —
        because a listed easter egg is not an easter egg. What it does add is the
        two VERBS: `ls` already prints filenames, but nobody knew they could open
        one, so a whole layer of the terminal was invisible behind a guess. */
     help: 'try: gm · whoami · uptime · diagnose · pet · birthday · snake · scores · credits · clear',
-    help2: 'poke around: ls · cd &lt;folder&gt; · cat &lt;file&gt; · sudo hire icybear · rm -rf bags (do not)',
+    /* `ls -a` is a VERB, not a secret. The file it uncovers is the secret, and
+       that stays unnamed here. Nobody outside a terminal has this as muscle
+       memory, so leaving it unsaid was not preserving a puzzle -- it was hiding
+       a whole layer behind trivia about unix. Same argument that put `cat` on
+       this line to begin with. */
+    help2: 'poke around: ls · ls -a · cd &lt;folder&gt; · cat &lt;file&gt; · sudo hire icybear · rm -rf bags (do not)',
     helpMore: 'that is most of them.',
     gm: 'gm. now get to work.',
     gmLate: 'it is {h}am. go to sleep.',
     gn: 'gn. logging you off properly.',
     gnDay: 'it is daytime. nice try.',
     whoami: 'visit #{n} from this machine. the angel sees you.',
-    ls: 'icy.txt&nbsp;&nbsp;delusions.txt&nbsp;&nbsp;bags/&nbsp;&nbsp;secrets/&nbsp;&nbsp;grass/ (never touched)',
+    /* THE COUNT IS THE DOOR. Naming .feelings here would hand over the one
+       thing the badge is made of; saying nothing left it undiscoverable, which
+       is worse. A count says something is there without saying what or where,
+       and it makes `ls -a` the obvious next thought rather than a piece of
+       unix trivia you either have or you do not. */
+    ls: 'icy.txt&nbsp;&nbsp;delusions.txt&nbsp;&nbsp;bags/&nbsp;&nbsp;secrets/&nbsp;&nbsp;grass/ (never touched)'
+      + '<br><span class="term__hint">5 shown. 1 hidden.</span>',
     lsa: '.&nbsp;&nbsp;..&nbsp;&nbsp;.feelings&nbsp;&nbsp;icy.txt&nbsp;&nbsp;delusions.txt&nbsp;&nbsp;bags/&nbsp;&nbsp;secrets/&nbsp;&nbsp;grass/',
     feelings: 'hidden. keep it that way.',
     delusions: '1. it works.<br>2. see 1.',
@@ -610,6 +627,88 @@ window.OS_STRINGS = {
     icytxt: 'came for the bull market, stayed for the whimsy.',
     xyzzy: 'a hollow voice says gm.',
     hesoyam: 'wrong city. wrong era. still respect.',
+    /* ---------- the second layer ----------
+       Everything below answers something that a person actually types. A
+       terminal that does not know `pwd` is not a terminal, it is a text box
+       with jokes in it, and every unanswered real command was teaching people
+       that this one is shallow. The rule is the same as the rest of the site:
+       be accurate first, funny second. The joke lands because the command is
+       right, not instead of it. */
+    pwd: '/home/icy',
+    dateNote: 'your clock, not hers. she is in vienna.',
+    echoEmpty: 'echo what?',
+    historyEmpty: 'nothing yet. you just got here.',
+    historyHead: 'this session:',
+    man: 'no manual entry for {t}. figure it out the way i did.',
+    manEmpty: 'man what? read the room instead.',
+    exit: 'you can check out any time you like.',
+    vim: 'opening vim… you are trapped now. :q! and pretend it was on purpose.',
+    nano: 'nano. the honest choice. respect.',
+    emacs: 'that is not an editor, that is a lifestyle.',
+    git: 'on branch main. nothing to commit. working tree delusional.',
+    npm: 'installing 1482 packages… 6 of them do something. 0 vulnerabilities, 3 regrets.',
+    sudoBare: 'sudo what? be specific.',
+    sudoNo: 'you are not in the sudoers file. this incident has been reported to the bear.',
+    rmRoot: 'absolutely not.',
+    chmod: 'everything here is already 777. i trust you. do not make that weird.',
+    ps: 'PID  COMMAND<br>001  hopium<br>013  delusion (load-bearing)<br>033  gm.exe<br>047  bags (not responding)<br>420  touching_grass · stopped',
+    top: 'cpu: vibes 94%<br>mem: 47 unrealized losses<br>uptime: since forever<br>load: 1 bear',
+    kill: 'you cannot kill {t}. it is load-bearing.',
+    killBags: 'tried that. it came back.',
+    ping: 'pong.',
+    pingIcy: 'she is typing…',
+    curl: 'no outbound requests. this machine stays home.',
+    open: 'that is what the icons are for.',
+    mkdir: 'made {t}. it is empty. like the roadmap.',
+    touch: 'touched {t}. consensually.',
+    touchGrass: 'you cannot touch grass from in here. that is the whole problem.',
+    root: 'you are not going up there.',
+    /* ---- things people type on a whim, which is the point ---- */
+    fortune: [
+      'the bottom is in. emotionally.',
+      'you will ship it. eventually. loudly.',
+      'someone is drafting a reply to you right now.',
+      'the chart means nothing. keep going.',
+      'your next idea is the one. probably. hopefully. yeah.',
+      'today you are 3% more employable than yesterday.',
+      'a bear thinks well of you.'
+    ],
+    cowsayEmpty: 'cowsay what?',
+    sl: 'you typed sl instead of ls. a train goes by. you have learned nothing.',
+    vibe: 'vibe check: passed. barely. keep moving.',
+    ratio: 'no.',
+    lfg: 'LFG. quietly though, it is a work computer.',
+    gg: 'gg. good game. genuinely.',
+    wagmi: 'you must be new here.',
+    ngmi: 'never stop gambling.',
+    love: 'DID YOU KNOW? i care you (true)',
+    based: 'based. departmentally confirmed.',
+    thanks: 'anytime. tell your friends.',
+    lol: 'right? me too.',
+    /* ---- the hack bit ---- */
+    hackLines: [
+      'establishing uplink…',
+      'bypassing firewall [████████░░] 81%',
+      'root access: GRANTED',
+      'enumerating targets…',
+      '  > mainframe.icybear.fun',
+      '  > the fed',
+      '  > your ex',
+      'deploying payload…'
+    ],
+    hackJk: 'haha jk, majin',
+    /* ---- the index ----
+       Names the fun ones and NOT the four that earn badges. A terminal that
+       lists its own secrets has none; a terminal that lists none of them reads
+       as empty. This is the half that can be given away. */
+    commandsHead: '✦ THINGS THIS TERMINAL KNOWS ✦',
+    commandsBody: 'gm · whoami · uptime · pwd · date · echo · history · diagnose · fortune · cowsay'
+      + '<br>snake · scores · hack · matrix · vibe · love · credits · birthday · pet · clear'
+      + '<br>ls · ls -a · cd &lt;folder&gt; · cat &lt;file&gt; · man · sudo hire icybear',
+    commandsFoot: 'not everything is on this list.',
+    /* A KNOWN VERB WITH A NEAR MISS. Dead-ending on a typo is the cheapest
+       thing a terminal can get wrong. */
+    didYouMean: 'unknown command. did you mean <b>{t}</b>?',
     snakeStart: 'snake. arrows steer. eat berries. the bear is watching.',
     snakeOver: 'game over. score: {n}. {verdict}',
     snakeGood: 'the bear is impressed. genuinely.',

@@ -1856,6 +1856,7 @@
     ];
   }
 
+  el('hack').addEventListener('click', hackStop);
   el('bsod').addEventListener('click', closeOverlays);
   el('credits').addEventListener('click', closeOverlays);
 
@@ -1960,10 +1961,33 @@
   var LEET = { '1': 'i', '!': 'i', '|': 'i', '3': 'e', '4': 'a', '@': 'a', '0': 'o',
                '5': 's', '$': 's', '7': 't', '+': 't', '8': 'b', '9': 'g', '(': 'c' };
 
+  /* THE LIST GREW. It was built for slurs and it stopped there, so ordinary
+     profanity walked straight through: a snake board signed `Asshole` was the
+     first thing a real tester tried and it worked.
+
+     EVERY ADDITION IS EXACT-MATCH ONLY. Nothing here joins SEVERE, which is the
+     substring pass and is the reason this filter once rejected 731 ordinary
+     words. Three roots were deliberately REFUSED because of what they collapse
+     to: `ass` becomes `as`, `kkk` becomes `k`, and `boobs` becomes `bobs`,
+     which is somebody's handle. `nonce` was refused for a different reason --
+     zero dictionary collisions, but it is a cryptographic term and this site's
+     audience is crypto.
+
+     PLURALS STAY EXPLICIT. Stripping a trailing s before matching would catch
+     every plural in one line and would also block the surnames Cocks and
+     Dicks, which is the Peacock bug returning by another door. */
   var BLOCK_RAW = ['nigger', 'nigga', 'faggot', 'fag', 'retard', 'kike', 'spic', 'chink',
                    'tranny', 'dyke', 'gook', 'beaner', 'wetback', 'raghead', 'towelhead',
-                   'rape', 'cunt', 'whore', 'slut', 'bitch', 'fuck', 'shit',
-                   'dick', 'cock', 'pussy', 'nazi', 'hitler', 'kys', 'pedo', 'incel'];
+                   'rape', 'cunt', 'whore', 'slut', 'bitch', 'fuck', 'shit', 'dick',
+                   'cock', 'pussy', 'nazi', 'hitler', 'kys', 'pedo', 'incel', 'asshole',
+                   'assholes', 'asshat', 'arsehole', 'dumbass', 'jackass', 'blowjob',
+                   'handjob', 'rimjob', 'cumshot', 'deepthroat', 'dildo', 'jizz', 'boner',
+                   'penis', 'vagina', 'anus', 'scrotum', 'tits', 'titties', 'smegma',
+                   'queef', 'masturbate', 'porn', 'pornhub', 'hentai', 'bastard', 'wanker',
+                   'wank', 'twat', 'bollocks', 'bellend', 'minge', 'skank', 'douchebag',
+                   'cocksucker', 'motherfucker', 'fucker', 'fuckboy', 'fuckface',
+                   'shithead', 'bullshit', 'rapist', 'pedophile', 'molest', 'groomer',
+                   'heil', 'fuhrer'];
 
   /* Pass 2's list. An entry earns a place here when an embedded match is worth a
      rare false positive: racial and homophobic slurs, where "iamanigger" must
@@ -2245,10 +2269,17 @@
     '.feelings': { kind: 'file', cat: S.term.feelings, cd: S.term.feelingsCd, earn: 'feel' }
   };
 
+  /* THE DOT IS A COSTUME, NOT A PASSWORD. `ls -a` prints `.feelings`, so the
+     dot is what marks it hidden -- and then `cat feelings` failed, which reads
+     as the file not being there rather than as a typo. Nobody hunting an easter
+     egg should lose it to a punctuation mark they already saw. */
+  var FS_ALIAS = { 'feelings': '.feelings' };
+
   function own(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key); }
 
   function runFs(verb, target) {
     var name = target.replace(/\/+$/, '');
+    if (!own(FS, name) && own(FS_ALIAS, name)) name = FS_ALIAS[name];
     if (!own(FS, name)) return false;
     var node = FS[name];
     if (verb === 'cd') {
@@ -2362,7 +2393,11 @@
     },
     'gn': function () {
       var h = new Date().getHours();
-      if (h >= 21 || h < 7) {
+      /* 20:00, not 21:00. Nine was drawn from icy's own clock rather than from
+         when a person says goodnight, and it locked the badge out of the whole
+         eight-o-clock hour -- which is exactly when somebody winding down for
+         the night is on a site like this. */
+      if (h >= 20 || h < 7) {
         say(S.term.gn);
         earn('gn');
         setTimeout(function () { el('gn').setAttribute('data-open', ''); }, 700);
@@ -2432,12 +2467,165 @@
     'pet': function () {
       var name = read('bearName', null);
       say(name ? fmt(S.term.petNamed, { name: name }) : S.term.petNameless);
+    },
+
+    /* ---- the second layer: commands a real shell answers ---- */
+    'pwd': function () { say(S.term.pwd); },
+    'date': function () {
+      say(new Date().toString());
+      say('<span class="term__hint">' + S.term.dateNote + '</span>');
+    },
+    'history': function () {
+      if (!cmdHistory.length) { say(S.term.historyEmpty); return; }
+      say(S.term.historyHead + '<br>' + cmdHistory.map(function (c, i) {
+        return '  ' + (i + 1) + '  ' + escapeHtml(c);
+      }).join('<br>'));
+    },
+    'exit': function () { say(S.term.exit); },
+    'vim': function () { say(S.term.vim); },
+    'vi': function () { say(S.term.vim); },
+    'nano': function () { say(S.term.nano); },
+    'emacs': function () { say(S.term.emacs); },
+    'npm install': function () { say(S.term.npm); },
+    'sudo': function () { say(S.term.sudoBare); },
+    'rm -rf /': function () { say(S.term.rmRoot); },
+    'ps': function () { say(S.term.ps); },
+    'top': function () { say(S.term.top); },
+    'ping': function () { say(S.term.ping); },
+    'ping icy': function () { say(S.term.pingIcy); },
+    'touch grass': function () { say(S.term.touchGrass); },
+    'cd /': function () { say(S.term.root); },
+
+    /* ---- and the ones people type on a whim ---- */
+    'fortune': function () { say(pick(S.term.fortune)); },
+    'sl': function () { say(S.term.sl); },
+    'vibe': function () { say(S.term.vibe); },
+    'ratio': function () { say(S.term.ratio); },
+    'lfg': function () { say(S.term.lfg); },
+    'gg': function () { say(S.term.gg); },
+    'wagmi': function () { say(S.term.wagmi); },
+    'ngmi': function () { say(S.term.ngmi); },
+    'love': function () { say(S.term.love); },
+    'based': function () { say(S.term.based); },
+    'hack': function () { hackRun(); },
+    'commands': function () {
+      say('<b>' + S.term.commandsHead + '</b>');
+      say(S.term.commandsBody);
+      say('<span class="term__hint">' + S.term.commandsFoot + '</span>');
     }
   };
+
+  /* ONE RESPONSE, MANY DOORS. `hey` worked and `hi` did not, which is a coin
+     flip on the single most likely thing a stranger types. gm and gn stay
+     alone on purpose: they are the slang, not a greeting with synonyms. */
+  var ALIAS = {
+    'hi': 'hey', 'hello': 'hey', 'yo': 'hey', 'sup': 'hey', 'hiya': 'hey',
+    'heya': 'hey', 'hallo': 'hey', 'oi': 'hey',
+    'ty': 'thanks', 'thx': 'thanks', 'thank you': 'thanks',
+    'lmao': 'lol', 'lmfao': 'lol', 'haha': 'lol', 'lel': 'lol',
+    'cls': 'clear', 'quit': 'exit', 'logout': 'exit', 'q': 'exit',
+    'ls -la': 'ls -a', 'ls -al': 'ls -a', 'ls -a -l': 'ls -a',
+    'neofetch': 'top', 'htop': 'top', 'uname': 'whoami',
+    'gm ser': 'gm', 'gmgm': 'gm'
+  };
+  COMMANDS.thanks = function () { say(S.term.thanks); };
+  COMMANDS.lol = function () { say(S.term.lol); };
+
+  /* Levenshtein, capped: anything past `max` is not a suggestion, so the
+     matrix does not need finishing. */
+  function editDistance(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    var prev = [], cur = [], i, j;
+    for (j = 0; j <= b.length; j++) prev[j] = j;
+    for (i = 1; i <= a.length; i++) {
+      cur[0] = i;
+      var best = i;
+      for (j = 1; j <= b.length; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
+                          prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+        if (cur[j] < best) best = cur[j];
+      }
+      if (best > max) return max + 1;
+      prev = cur.slice();
+    }
+    return prev[b.length];
+  }
+
+  /* Suggests only from what is already public: the alias table and the command
+     list. A near miss on a SECRET must stay a miss, or the terminal hands over
+     an easter egg to anyone who fat-fingers near it. */
+  var NO_SUGGEST = { 'crash': 1, 'gn': 1, 'iddqd': 1, 'hesoyam': 1, 'xyzzy': 1,
+                     'fus ro dah': 1, 'wumpa': 1, 'bells': 1 };
+
+  function nearestCommand(input) {
+    if (input.length < 2) return null;
+    var pool = Object.keys(COMMANDS).filter(function (k) { return !NO_SUGGEST[k]; })
+                     .concat(Object.keys(ALIAS));
+    var best = null, bestD = 3;
+    for (var i = 0; i < pool.length; i++) {
+      var d = editDistance(input, pool[i], 2);
+      if (d < bestD && d > 0) { bestD = d; best = pool[i]; }
+    }
+    return best;
+  }
+
+  /* cowsay, except it is a bear, because that is who lives here. */
+  function bearsay(text) {
+    var t = escapeHtml(String(text).slice(0, 40));
+    var bar = new Array(t.length + 3).join('\u2500');
+    return '<pre class="term__say"> ' + bar + '\n( ' + t + ' )\n ' + bar +
+           '\n    \\   \u10da(\u0669\u25d5\u25bf\u25d5\u0669)\u10da\n     \\  ' +
+           '\u0295\u2022\u1d25\u2022\u0294</pre>';
+  }
+
+  /* THE HACK BIT. A full-screen tube, green on black, that types like it means
+     it and then does not. Built as a sequence of timeouts rather than a CSS
+     animation because the pause before the punchline is the joke, and a pause
+     is a thing you schedule. Reuses the crash screen's shape so the OS has one
+     way of taking over the whole display. */
+  var hackTimers = [];
+
+  function hackStop() {
+    hackTimers.forEach(clearTimeout);
+    hackTimers = [];
+    var h = el('hack');
+    h.removeAttribute('data-open');
+    h.setAttribute('aria-hidden', 'true');
+  }
+
+  function hackRun() {
+    var h = el('hack'), out = el('hack-out');
+    if (h.hasAttribute('data-open')) return;
+    out.textContent = '';
+    h.setAttribute('data-open', '');
+    h.setAttribute('aria-hidden', 'false');
+    sfx('key');
+    var t = 0;
+    S.term.hackLines.forEach(function (line) {
+      t += 420 + Math.random() * 260;
+      hackTimers.push(setTimeout(function () {
+        out.textContent += line + '\n';
+        sfx('key');
+      }, t));
+    });
+    /* the beat. long enough that somebody starts to believe it. */
+    t += 1500;
+    hackTimers.push(setTimeout(function () {
+      out.textContent += '\n' + S.term.hackJk;
+      h.setAttribute('data-jk', '');
+      sfx('delulu');
+    }, t));
+    hackTimers.push(setTimeout(function () {
+      h.removeAttribute('data-jk');
+      hackStop();
+      say(S.term.hackJk);
+    }, t + 2200));
+  }
 
   function runCommand(raw) {
     var c = raw.trim().toLowerCase();
     if (!c) return;
+    if (own(ALIAS, c)) c = ALIAS[c];
 
     /* `sign` is the one command whose argument is a person's name, so it reads
        the RAW input. Everything else is lowercased for matching, which would
@@ -2459,8 +2647,46 @@
 
     if (verb === 'pet' && target) { COMMANDS.pet(); return; }
     if (verb === 'cd' && (target === '..' || target === '~' || target === '')) { say(S.term.home); return; }
+
+    /* VERBS THAT TAKE ANYTHING. These answer whatever they are handed, so they
+       are matched on the verb rather than looked up whole. `sudo` is the one
+       that matters: every other shell in the world has an opinion about it. */
+    if (verb === 'sudo') { say(S.term.sudoNo); return; }
+    if (verb === 'echo') { say(target ? escapeHtml(raw.trim().slice(5)) : S.term.echoEmpty); return; }
+    if (verb === 'man') { say(target ? fmt(S.term.man, { t: escapeHtml(target) }) : S.term.manEmpty); return; }
+    if (verb === 'kill') {
+      say(target === 'bags' ? S.term.killBags : fmt(S.term.kill, { t: escapeHtml(target || 'that') }));
+      return;
+    }
+    if (verb === 'chmod') { say(S.term.chmod); return; }
+    if (verb === 'curl' || verb === 'wget') { say(S.term.curl); return; }
+    if (verb === 'open') { say(S.term.open); return; }
+    if (verb === 'git') { say(S.term.git); return; }
+    if (verb === 'npm' || verb === 'yarn' || verb === 'pnpm') { say(S.term.npm); return; }
+    if (verb === 'ping' && target) { say(target === 'icy' ? S.term.pingIcy : S.term.ping); return; }
+    if (verb === 'mkdir' && target) { say(fmt(S.term.mkdir, { t: escapeHtml(target) })); return; }
+    if (verb === 'touch' && target) { say(fmt(S.term.touch, { t: escapeHtml(target) })); return; }
+    if (verb === 'cowsay') { say(target ? bearsay(raw.trim().slice(7)) : S.term.cowsayEmpty); return; }
     if (target && runFs(verb, target)) return;
     if (runFs('', c)) return;
+    /* The verb was right and the target was not, so say THAT. Answering
+       "unknown command" to `cat nothing.txt` tells somebody their verb was
+       wrong when the verb is the one thing they got right. */
+    /* A TYPO IS NOT AN UNKNOWN COMMAND. Dead-ending on `hepl` is the cheapest
+       thing a terminal can get wrong, and the fix is one edit-distance pass
+       over a table that already exists. Two is the right threshold: one catches
+       almost nothing, three starts suggesting `snake` for `scores`. */
+    var near = nearestCommand(c);
+    if (near) { say(fmt(S.term.didYouMean, { t: escapeHtml(near) })); return; }
+
+    if (target && (verb === 'cat' || verb === 'ls')) {
+      say('<span class="term__err">' + fmt(S.term.noFile, { t: escapeHtml(target) }) + '</span>');
+      return;
+    }
+    if (target && verb === 'cd') {
+      say('<span class="term__err">' + fmt(S.term.noDir, { t: escapeHtml(target) }) + '</span>');
+      return;
+    }
     say('<span class="term__err">' + S.term.unknown + '</span>');
   }
 
@@ -3558,7 +3784,11 @@
   function hintWinnableNow(id) {
     var m = effMode();
     if (id === 'snowman') return m === 'snow';
-    if (id === 'gn') return !icyAwake();
+    /* The visitor's clock, because the gn COMMAND runs on the visitor's clock.
+       This asked icyAwake(), which is Vienna, so somebody in Tokyo at 9pm --
+       for whom the badge is winnable right now -- was never offered the hint,
+       and somebody in California got offered it at lunchtime. */
+    if (id === 'gn') { var gh = new Date().getHours(); return gh >= 20 || gh < 7; }
     if (id === 'seasons') return true;
     return true;
   }
@@ -5831,6 +6061,7 @@
      are dismissing. */
   window.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
+    if (el('hack').hasAttribute('data-open')) { hackStop(); return; }
     if (el('pkey').hasAttribute('data-open')) { closePkey(); return; }
     if (jiggling) { setJiggle(false); return; }
     if (el('settings').hasAttribute('data-open')) { closeSettings(); return; }

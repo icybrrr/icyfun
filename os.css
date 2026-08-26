@@ -3015,6 +3015,52 @@ body[data-booting] .icon__start { visibility: hidden !important; }
 #gn .t { font: 400 var(--text-lead)/var(--lh-lead) var(--font-mono); letter-spacing: var(--track-wider); color: #b99df0; }
 #gn .t--hint { font-size: var(--text-caption); opacity: 0.6; }
 
+/* ---- hack: the tube, green on black ----
+   Not themed, and that is the joke. Every other full-screen state on this OS
+   wears the palette; this one is doing an impression of a nineties movie, so
+   it is the one place the design system deliberately steps aside. Phosphor
+   green, one mono face, and a caret that blinks whether or not anything is
+   still being typed. */
+#hack {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  padding: clamp(20px, 6vw, 72px);
+  background: #000;
+  cursor: pointer;
+  overflow: hidden;
+}
+#hack[data-open] { display: block; }
+#hack::after {
+  /* the scanline wash, so it reads as a screen rather than as a text file */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.5) 2px 4px);
+}
+#hack-out {
+  margin: 0;
+  font: 700 clamp(12px, 1.7vw, 18px)/1.7 var(--font-mono);
+  color: #35ff6d;
+  text-shadow: 0 0 8px rgba(53, 255, 109, 0.65);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+#hack-out::after {
+  content: '\2588';
+  animation: hack-caret 1s steps(2, start) infinite;
+}
+@keyframes hack-caret { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+/* the punchline gets the screen to itself: everything above it dims out */
+#hack[data-jk] #hack-out { color: #35ff6d; }
+#hack[data-jk] #hack-out::after { animation: none; opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  #hack-out::after { animation: none; }
+}
+
 /* --------------------------------------------------------------------------
    12. PHONE SHELL  (z 60)
    -------------------------------------------------------------------------- */

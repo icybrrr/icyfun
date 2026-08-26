@@ -30,7 +30,16 @@ const MAX_SCORE = 600;   // the board is 30x20; a perfect game cannot exceed it
 const NAME_RE = /^[\p{L}\p{N} _.@-]+$/u;
 const HAS_ALNUM = /[\p{L}\p{N}]/u;
 
-const RESERVED = ["icy", "icygobrrr", "icybear", "admin", "mod",
+// `icy` and `icybear` came off the list on 26 Aug 2026. They were reserved to
+// stop a stranger signing the wall as the owner, which is a real thing to want
+// -- but the owner is also the person most likely to sign her own wall, and the
+// list has no way to tell the two apart. Being told "that name is taken" on your
+// own site is the worse failure, and it is the certain one.
+//
+// `icygobrrr` STAYS. It is the handle, it is what identifies her across every
+// platform, and nobody signing as it is doing anything but pretending to be her.
+// `icy` on its own is a common enough word that somebody could mean it honestly.
+const RESERVED = ["icygobrrr", "admin", "mod",
                   "moderator", "official", "support"];
 
 // Cyrillic and Greek lookalikes, folded before the reserved-name comparison.
@@ -59,10 +68,33 @@ const LEET: Record<string, string> = {
 // Must stay identical to BLOCK_RAW in os.js. test/blocklist.test.js compares the
 // two files and fails if they drift, because a word added to only one of them
 // means the client rejects what the server accepts, or worse, the reverse.
+/* THE LIST GREW. It was built for slurs and it stopped there, so ordinary
+   profanity walked straight through: a snake board signed `Asshole` was the
+   first thing a real tester tried and it worked.
+
+   EVERY ADDITION IS EXACT-MATCH ONLY. Nothing here joins SEVERE, which is the
+   substring pass and is the reason this filter once rejected 731 ordinary
+   words. Three roots were deliberately REFUSED because of what they collapse
+   to: `ass` becomes `as`, `kkk` becomes `k`, and `boobs` becomes `bobs`,
+   which is somebody's handle. `nonce` was refused for a different reason --
+   zero dictionary collisions, but it is a cryptographic term and this site's
+   audience is crypto.
+
+   PLURALS STAY EXPLICIT. Stripping a trailing s before matching would catch
+   every plural in one line and would also block the surnames Cocks and
+   Dicks, which is the Peacock bug returning by another door. */
 const BLOCK_RAW = ["nigger", "nigga", "faggot", "fag", "retard", "kike", "spic", "chink",
-  "tranny", "dyke", "gook", "beaner", "wetback", "raghead", "towelhead",
-  "rape", "cunt", "whore", "slut", "bitch", "fuck", "shit",
-  "dick", "cock", "pussy", "nazi", "hitler", "kys", "pedo", "incel"];
+                   "tranny", "dyke", "gook", "beaner", "wetback", "raghead", "towelhead",
+                   "rape", "cunt", "whore", "slut", "bitch", "fuck", "shit", "dick",
+                   "cock", "pussy", "nazi", "hitler", "kys", "pedo", "incel", "asshole",
+                   "assholes", "asshat", "arsehole", "dumbass", "jackass", "blowjob",
+                   "handjob", "rimjob", "cumshot", "deepthroat", "dildo", "jizz", "boner",
+                   "penis", "vagina", "anus", "scrotum", "tits", "titties", "smegma",
+                   "queef", "masturbate", "porn", "pornhub", "hentai", "bastard", "wanker",
+                   "wank", "twat", "bollocks", "bellend", "minge", "skank", "douchebag",
+                   "cocksucker", "motherfucker", "fucker", "fuckboy", "fuckface",
+                   "shithead", "bullshit", "rapist", "pedophile", "molest", "groomer",
+                   "heil", "fuhrer"];
 
 // Pass 2 and pass 3 operate on this subset only. An entry earns a place when an
 // embedded match is worth a rare false positive. Deliberately not `fuck`,
