@@ -38,7 +38,23 @@ window.OS_STRINGS = {
     gnLine: 'GN. DO NOT POST.',
     gnHint: 'tap to wake',
     viewTitle: 'VIEW',
-    jiggleDone: 'done ✦',
+    /* ⟢ (U+27E2) ENDS EVERY CALL TO ACTION, and only those. It is a sparkle
+       and an arrowhead in one mark, which is exactly what a CTA is doing: this
+       is the shiny thing, and it points onward. It replaced a split convention
+       where some buttons ended in ✦ and others in →, so the two halves of one
+       idea were wearing two different marks.
+       Not everywhere ✦ appears. Section headings, toasts, the subtitle and the
+       standee caption keep theirs: those are decoration, and a mark that means
+       "press this" stops meaning it the moment it also means "this is a title".
+       ♡ is left alone too, on `dm` and `bless it` -- it is saying something the
+       arrow is not.
+       FALLBACK. None of the four bundled families carry it, but none of them
+       carry ✦, → or ♡ either, so this changes nothing about how the site gets
+       its symbols: they all come from the system stack. U+27E2 is rarer than
+       what it replaces (macOS resolves it through Apple Symbols, Windows
+       through Segoe UI Symbol), so if it ever tofus on an old Android, ✦ is the
+       one-character revert. */
+    jiggleDone: 'done ⟢',
   },
 
   /* ---------- apps ---------- */
@@ -90,7 +106,7 @@ window.OS_STRINGS = {
     resume:   { icon: 'resume',  label: 'resume.pdf' },
     diag:     { icon: 'diag',  label: 'diagnosis.exe' },
     folio:    { icon: 'folio',  label: 'portfolio.exe' },
-    stick:    { icon: 'stick',  label: 'stickers.exe' },
+    stick:    { icon: 'stick',  label: 'decora.exe' },
     guest:    { icon: 'guest',  label: 'guestbook.exe' },
     quote:    { icon: 'quote',  label: 'quote.exe' },
     patch:    { icon: 'patch',  label: 'patch_notes.log' },
@@ -102,7 +118,7 @@ window.OS_STRINGS = {
     /* chrome, not an app: listed here for its label and dock icon, but
        CHROME in os.js keeps it out of the 13/13 count. */
     faq:      { icon: 'faq',  label: 'faq.txt' },
-    /* also chrome: reached from the theme menu and from stickers.exe, not from
+    /* also chrome: reached from the theme menu and from decora.exe, not from
        the desktop, so it is not part of the 14/14 tour either */
     wall:     { icon: 'wall',  label: 'wallpapers.exe' }
   },
@@ -634,7 +650,7 @@ window.OS_STRINGS = {
 
   /* ---------- apps ---------- */
   app: {
-    diagAgain: 'take it again →',
+    diagAgain: 'take it again ⟢',
     guestEmpty: 'nobody has signed yet. be the reason this page exists.',
     guestCount: '{n} stamp{s}',
     bagsError: '<b>error: bags not found.</b><br>you have 47 unrealized losses. do not open.',
@@ -653,17 +669,20 @@ window.OS_STRINGS = {
     dmTitle: "let's talk.",
     dmLine1: "tell me what you're building,",
     dmLine2: "i'll tell you if i'm the right person for it.",
-    dmTg: 'dm me ✦',
+    dmTg: 'dm me ⟢',
     dmNote: 'i reply within 24h, usually much faster.',
     achPop: 'badge unlocked',
     themePop: 'theme unlocked',
     achScore: '{n}/{t}',
-    seeWork: 'see the work →',
+    /* hover title on the badge panel, which is clickable. Not on the theme
+       panel -- that one announces a sky, not a patch. */
+    achOpen: 'open badges.sav',
+    seeWork: 'see the work ⟢',
     folioAll: 'all',
     stampTwice: 'one stamp per visitor. i said what i said.',
     /* the button read_me ends on. It used to open a form, so it asked for a
        quote; it opens a dm now, so it asks for a conversation. */
-    infoCta: "let's talk →",
+    infoCta: "let's talk ⟢",
     setEyebrow: 'settings',
     setKey: 'your product key',
     setKeySub: 'save or restore your badges',
@@ -774,14 +793,18 @@ window.OS_STRINGS = {
     notePhone: 'psst · post hands the picture straight to your share sheet. '
         + 'copy and save both keep it.',
     idPh: 'your @ (optional)',
-    idGo: 'add me ✦',
+    idGo: 'add me ⟢',
+    /* the one-time claim path, for the two reserved edition numbers */
+    claimed: 'edition {no} is yours ⟢',
+    claimSpent: 'that key has already been used.',
+    claimOffline: 'the press is offline. try that link again later.',
     idSet: 'on the card ♡',
     idCleared: 'handle removed.',
     idNoPfp: "couldn't load that pfp. the handle still shows.",
     filename: 'icybear-proof-of-visit.png',
-    copy: 'copy ✦',
-    post: 'post ✦',
-    save: 'save ✦',
+    copy: 'copy ⟢',
+    post: 'post ⟢',
+    save: 'save ⟢',
     close: 'close',
     copied: 'copied! paste it into your post.',
     saved: 'saved ♡',
@@ -800,30 +823,51 @@ window.OS_STRINGS = {
     more: '+{n} MORE',
     visit: 'visit {n}',
     tier: '{tier} · {n} of {t} badges found',
-    /* rarity, said out loud. the card is an advert for the themes a stranger
-       has not unlocked yet, so the ladder has to be legible at a glance. */
+    /* THIS GRADES THE CARD, NOT THE PERSON'S TASTE.
+       It used to grade the THEME -- standard issue / uncommon / rare / epic /
+       the thirteenth, keyed on whichever sky you were wearing. Which meant
+       somebody who found all thirteen badges and then went back to cold boot
+       because they liked it best got a card reading "standard issue", while the
+       same line said "13 of 13 badges found" right beside it. The word was
+       calling them a beginner for having a preference.
+       The count was always the honest half of this line. So the word stopped
+       ranking a choice and started naming an object: what run the card is from.
+       That is a lottery, and nobody can be judged for it.
+       One axis, print-run language, and it only moves for the 43 serials in
+       SUPER and RARE -- so 99.6% of cards read `standard issue` and the word
+       appearing at all means something. */
     tiers: {
-      base: 'standard issue',
-      holo: 'uncommon',
-      strawberry: 'rare',
-      arcade: 'epic',
-      archangel: 'the thirteenth'
+      standard: 'standard issue',
+      special: 'special issue',
+      one: 'one of one'
     }
   },
 
   /* ---------- themes ---------- */
   /* ---------- wallpapers ---------- */
   wall: {
-    intro: 'take the sky with you. every theme, day and night.',
-    note: 'free. no signup, no email, no newsletter you did not ask for.',
+    intro: 'live a la icy. one for every theme.',
+    /* The price was a footnote under the grid, which is the one place a person
+       who has not decided to scroll will never read. It is the second beat of
+       the header now, and it stopped explaining itself: "no signup, no email,
+       no newsletter" answered an objection nobody had made yet, and answering
+       it was what made it sound like there was a catch. */
+    free: 'free, because i love you.',
+    fine: '(OS sold separately)',
     phone: 'phone',
     desk: 'desktop',
     day: 'day',
     night: 'night',
     locked: 'locked · {n} badges',
-    lockedHint: 'earn it on the desktop and the wallpaper comes with it.',
-    sizePhone: '1179 × 2556',
-    sizeDesk: '2560 × 1440',
+    /* A LOCKED TILE TALKS. It used to be a dashed box with a sparkle in it,
+       which reads as "broken" rather than "not yet". These two lines are the
+       wallpaper's own voice: the question mark is what you can see of it, and
+       the sentence tells you the price. Kept short because the phone tile in
+       the pair is only about 120px wide. */
+    lockedQ: '???',
+    lockedFree: 'earning badges will set me free',
+    /* the numbers moved into os.js beside the export sizes, so the two cannot
+       drift apart the way they had: these said 2560x1440 for art that is 16:10 */
     got: 'saved ✦ {name}',
     open: '↓ get these as wallpapers'
   },

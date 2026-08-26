@@ -1637,7 +1637,7 @@
     var saved = loadSave();
     if (!saved) return;
     loadBtn.hidden = false;
-    loadBtn.textContent = 'view your last save ✦';
+    loadBtn.textContent = 'view your last save ⟢';
 
     loadBtn.addEventListener('click', function () {
       sfx('tap');

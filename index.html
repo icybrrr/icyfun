@@ -90,7 +90,7 @@
   </script>
 
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://icybear.fun">
+  <meta property="og:url" content="https://icybear.fun/">
   <meta property="og:title" content="icybearOS · you're inside my computer">
   <meta property="og:description" content="community manager + brand designer, 4+ years in web3. open to full-time / freelance, remote, CET.">
   <meta property="og:image" content="https://icybear.fun/images/og-image.png">
@@ -200,6 +200,10 @@
      its own rather than borrowing the toast, which is for things like "theme:
      prismagical". The patch itself is the left half of it. -->
 <div id="achpop" class="glass glass--sheer" role="status" aria-live="polite" hidden>
+  <!-- the same fan the one-of-one card wears behind its plate, and the same
+       one the 13/13 ceremony throws. Earning something should look like the
+       same event wherever it happens. -->
+  <span class="achpop__rays" aria-hidden="true"></span>
   <span class="achpop__plate"><img class="achpop__art" alt="" width="52" height="52">
     <!-- the theme variant swaps the patch for the sky it just unlocked, wearing
          that theme's own drifting glyph -->
@@ -221,6 +225,17 @@
 <!-- ---------- desktop (z 2-5) ---------- -->
 <main id="desktop">
   <div id="brand">
+    <!-- THE PAGE HAD NO h1 AT ALL. The name is set as a masked logomark, which
+         is a <div role="img"> carrying an aria-label -- correct for a logo, and
+         invisible to the one signal a search engine weights most on a query
+         that IS the brand name. The three queries this site has to win are
+         "icybear", "icybear fun" and "icybearos", and it was competing for them
+         with a <title> and nothing else.
+         sr-only rather than converting the logomark, because role="img"
+         overrides the implicit heading role: an <h1 role="img"> is read as a
+         picture, so the tag would satisfy a crawler and take the heading away
+         from a screen reader. This says exactly what the logo says. -->
+    <h1 class="sr-only">icybearOS &#183; icybear.fun &#183; icy&#8217;s computer</h1>
     <div class="brand__row">
       <div class="logomark" id="wordmark" role="img" aria-label="icybearOS">
         <span class="logomark__art" aria-hidden="true">
@@ -234,14 +249,14 @@
   </div>
 
   <div id="icons">
-    <button class="icon icon--shimmer" data-app="readme"><span class="icon__art"><img src="images/os/icons/readme.svg" alt="" draggable="false"></span><span class="icon__label">read_me.txt</span><span class="icon__start">start here</span></button>
+    <button class="icon" data-app="readme"><span class="icon__art"><img src="images/os/icons/readme.svg" alt="" draggable="false"></span><span class="icon__label">read_me.txt</span><span class="icon__start">start here</span></button>
     <button class="icon" data-app="folio"><span class="icon__art"><img src="images/os/icons/folio.svg" alt="" draggable="false"></span><span class="icon__label">portfolio.exe</span></button>
     <button class="icon" data-app="quest"><span class="icon__art"><img src="images/os/icons/quest.svg" alt="" draggable="false"></span><span class="icon__label">quest_log.dat</span></button>
     <button class="icon" data-app="resume"><span class="icon__art"><img src="images/os/icons/resume.svg" alt="" draggable="false"></span><span class="icon__label">resume.pdf</span></button>
     <button class="icon" data-app="quote"><span class="icon__art"><img src="images/os/icons/quote.svg" alt="" draggable="false"></span><span class="icon__label">quote.exe</span></button>
-    <button class="icon" data-app="diag"><span class="icon__art"><img src="images/os/icons/diag.svg" alt="" draggable="false"></span><span class="icon__label">diagnosis.exe</span></button>
-    <button class="icon" data-app="guest"><span class="icon__art"><img src="images/os/icons/guest.svg" alt="" draggable="false"></span><span class="icon__label">guestbook.exe</span></button>
-    <button class="icon" data-app="stick"><span class="icon__art"><img src="images/os/icons/stick.svg" alt="" draggable="false"></span><span class="icon__label">stickers.exe</span></button>
+    <button class="icon" data-app="diag"><span class="icon__art"><img src="images/os/icons/diag.svg" alt="" draggable="false"></span><span class="icon__label">diagnosis.exe</span><span class="icon__start">get diagnosed</span></button>
+    <button class="icon" data-app="guest"><span class="icon__art"><img src="images/os/icons/guest.svg" alt="" draggable="false"></span><span class="icon__label">guestbook.exe</span><span class="icon__start">sign me</span></button>
+    <button class="icon" data-app="stick"><span class="icon__art"><img src="images/os/icons/stick.svg" alt="" draggable="false"></span><span class="icon__label">decora.exe</span></button>
     <button class="icon" data-app="ach"><span class="icon__art"><img src="images/os/icons/ach.svg" alt="" draggable="false"></span><span class="icon__label">badges.sav</span></button>
     <button class="icon" data-app="patch"><span class="icon__art"><img src="images/os/icons/patch.svg" alt="" draggable="false"></span><span class="icon__label">patch_notes.log</span></button>
     <button class="icon" data-app="terminal"><span class="icon__art"><img src="images/os/icons/terminal.svg" alt="" draggable="false"></span><span class="icon__label">terminal.exe</span></button>
@@ -359,7 +374,7 @@
             <span class="experience-card__dates">JAN – APR 2026</span>
           </div>
           <p class="experience-card__role">COMMUNITY MANAGER + BRAND DESIGNER</p>
-          <p class="experience-card__description">sole community + design hire on a 5-person team. led visual content and GTM for the pre-launch campaign: 6.2K+ unique users in 30 days, 8 AMAs as brand voice, 3 partnerships sourced and closed. product trailer hit 2.8K+ views in 24 hours, fresh account, zero ad spend.</p>
+          <ul class="deed"><li>sole community + design hire on a <b class="deed__n">5</b>-person team</li><li>led visual content and GTM strategy for the pre-launch campaign: <b class="deed__n">6.2K+</b> unique users in <b class="deed__n">30 days</b></li><li>produced product trailer: <b class="deed__n">2.8K+</b> views in 24 hours from a fresh unbotted account, zero ad spend</li><li>hosted <b class="deed__n">8</b> AMAs as the brand voice</li><li>sourced and closed <b class="deed__n">3</b> partnerships, pitch through activation</li></ul>
           <button class="applink" data-app="folio" data-folio="th" data-fill="see-work"></button>
         </article>
 
@@ -369,7 +384,7 @@
             <span class="experience-card__dates">2024 – 2025</span>
           </div>
           <p class="experience-card__role">COMMUNITY MANAGER + LEAD DESIGNER</p>
-          <p class="experience-card__description">brand content + programming for a 50K+ X / 10K+ Discord community. marketing for an NFT launch that minted out for $250K, mint crisis comms handled, repped the brand at 4 global conferences.</p>
+          <ul class="deed"><li>led marketing for the BeraToners mint: sold out at <b class="deed__n">$250K</b></li><li>managed brand and socials for a <b class="deed__n">50K+</b> X and <b class="deed__n">10K+</b> Discord community</li><li>ran mint crisis comms: community backlash over supply details, restored trust and sentiment before launch</li><li>built Discord programming including event contests and classes that trained members to produce branded content</li><li>designed BeraTone's official sticker pack: adopted as the community's primary reaction set across Discord and Telegram</li></ul>
           <button class="applink" data-app="folio" data-folio="ber" data-fill="see-work"></button>
         </article>
 
@@ -379,7 +394,7 @@
             <span class="experience-card__dates">2022 – 2023</span>
           </div>
           <p class="experience-card__role">COMMUNITY MANAGER + LEAD DESIGNER</p>
-          <p class="experience-card__description">weekly programming for 25K+ X / 10K+ Discord: AMAs, game days, art streams, community contests, and more. art directed a 6-person global art team and directed a 400+ attendee live event at NFT NYC 2022.</p>
+          <ul class="deed"><li>ran weekly community programming for <b class="deed__n">25K+</b> X and <b class="deed__n">10K+</b> Discord: AMAs, game days, art streams</li><li>art directed a globally-distributed <b class="deed__n">6</b>-person art team</li><li>directed <b class="deed__n">400+</b> attendee live event at NFT NYC 2022: venue, partnerships, merch, logistics</li><li>produced recurring art drop program as a live attendance incentive</li></ul>
           <button class="applink" data-app="folio" data-folio="tub" data-fill="see-work"></button>
         </article>
 
@@ -389,7 +404,7 @@
             <span class="experience-card__dates">2022 – PRESENT</span>
           </div>
           <p class="experience-card__role">CREATIVE DIRECTOR · INDEPENDENT</p>
-          <p class="experience-card__description">built this web3 persona to 6K organic followers with weekly spaces + livestreams · visible enough to get scouted directly into the BeraTone role.</p>
+          <ul class="deed"><li>built this web3 persona to <b class="deed__n">6K</b> organic followers</li><li>ran consistent weekly Spaces and livestreams with a loyal audience</li><li>gained enough visibility to be scouted into the BeraTone role</li></ul>
           <button class="applink" data-app="folio" data-folio="icy" data-fill="see-work"></button>
         </article>
       </div>
@@ -432,7 +447,7 @@
           <p class="lede">the pdf is the version you can forward enthusiastically to
             your colleagues, though.</p>
           <div class="doc__cta">
-            <a class="button button--compact holo-surface holo-surface--button" href="icybear-cv.pdf" download>download the pdf ✦</a>
+            <a class="button button--compact holo-surface holo-surface--button" href="icybear-cv.pdf" download>download the pdf ⟢</a>
             <p class="mini">the legal version comes with the contract, not the conversation.</p>
           </div>
         </div>
@@ -458,7 +473,7 @@
       </div>
       <p class="app-hero" data-slot="diag-orb"><img src="images/os/icons/diag.svg" alt=""></p>
       <p><b>icybear's official clinical assessment.</b><br>answer honestly! or not.<br>we see how you post. we know the truth.</p>
-      <p style="margin-top:10px"><a class="button button--compact holo-surface holo-surface--button" href="chart/" data-slot="diag-cta">GET DIAGNOSED →</a></p>
+      <p style="margin-top:10px"><a class="button button--compact holo-surface holo-surface--button" href="chart/" data-slot="diag-cta">GET DIAGNOSED ⟢</a></p>
       <p class="mini">your result gets remembered and lands in the print screen capture.</p>
     </div>
     <span class="resize" aria-hidden="true"></span>
@@ -467,17 +482,24 @@
   
 
   <article class="win" id="w-stick">
-    <div class="tbar"><span class="tbar__lights"><button class="tlight tlight--close" aria-label="close"></button><button class="tlight tlight--shade" aria-label="collapse" aria-pressed="false"></button><button class="tlight tlight--zoom" aria-label="maximise" aria-pressed="false"></button></span><h2 class="tbar__title">stickers.exe</h2></div>
+    <div class="tbar"><span class="tbar__lights"><button class="tlight tlight--close" aria-label="close"></button><button class="tlight tlight--shade" aria-label="collapse" aria-pressed="false"></button><button class="tlight tlight--zoom" aria-label="maximise" aria-pressed="false"></button></span><h2 class="tbar__title">decora.exe</h2></div>
     <div class="wbody">
-      <p class="center" style="font-weight:800;color:var(--os-ink-dim)">drop no. 001 · icybera ♡</p>
+      <!-- THE LATEST DROP, not the first one. This named the whole app back when
+           the app was one pack; with four slots on the sheet it has to say which
+           of them is new or it is just mislabelling the window. It moves with
+           every drop -- 003 lands, this line becomes 003, and the NEW: label
+           moves with it. The label is the point: "drop no. 002" on its own is
+           a number, and a number sitting next to 003 and 004 reads as the
+           OLDEST one. -->
+      <p class="center" style="font-weight:800;color:var(--os-ink-dim)"><span class="os-mono drop-new">new:</span>drop no. 002 · wallpapers ♡</p>
       <div class="stk-sheet">
         <a class="stk stk--seal stk--live" href="https://t.me/addstickers/icybera" target="_blank" rel="noopener">
           <span class="stk__art"><img src="images/os/icons/stick-bear.svg" alt=""></span>
-          <span class="stk__t">ICYBERA<br>the real pack ✦<br><b>add on telegram →</b></span>
+          <span class="stk__t">ICYBERA<br>the sticker pack ✦<br><b>add on telegram ⟢</b></span>
         </a>
         <button class="stk stk--live" data-app="wall">
           <span class="stk__art"><img src="images/os/icons/wall.svg" alt=""></span>
-          <span class="stk__t">WALLPAPERS<br>ten skies ✦<br><b>open the drop →</b></span>
+          <span class="stk__t">WALLPAPERS<br>branding, in a cute way ✦<br><b>open the drop ⟢</b></span>
         </button>
         <div class="stk stk--soon"><span class="stk__art">✧</span><span class="stk__t">???<br>drop no. 003</span></div>
         <div class="stk stk--soon"><span class="stk__art">✧</span><span class="stk__t">???<br>drop no. 004</span></div>
@@ -490,11 +512,17 @@
   <article class="win" id="w-wall" style="width:600px">
     <div class="tbar"><span class="tbar__lights"><button class="tlight tlight--close" aria-label="close"></button><button class="tlight tlight--shade" aria-label="collapse" aria-pressed="false"></button><button class="tlight tlight--zoom" aria-label="maximise" aria-pressed="false"></button></span><h2 class="tbar__title">wallpapers.exe</h2></div>
     <div class="wbody">
-      <p class="center" style="font-weight:800;color:var(--os-ink-dim)" data-fill="wall-intro"></p>
-      <!-- ten tiles, built by os.js from THEMES x day/night so a sixth theme
-           needs nothing added here and a locked one cannot leak a download -->
+      <!-- Three beats, each quieter than the one above: the pitch, the price,
+           the joke about the price. The price used to sit under the grid, where
+           nobody scrolled far enough to be told it was free. -->
+      <header class="wall-head">
+        <p class="wall-head__t" data-fill="wall-intro"></p>
+        <p class="wall-head__free" data-fill="wall-free"></p>
+        <p class="wall-head__fine" data-fill="wall-fine"></p>
+      </header>
+      <!-- one tile per theme, built by os.js, so a sixth theme needs nothing
+           added here and a locked one cannot leak a download -->
       <div class="wall-grid" id="wall-grid"></div>
-      <p class="mini" data-fill="wall-note"></p>
     </div>
     <span class="resize" aria-hidden="true"></span>
   </article>
@@ -516,7 +544,7 @@
       <label class="sr-only" for="guest-name">name or handle</label>
       <input class="field" id="guest-name" maxlength="16" placeholder="name or handle, 16 chars" autocomplete="off">
       <p class="guest-hint" data-slot="guest-hint" role="status" aria-live="polite"></p>
-      <button class="button button--compact holo-surface holo-surface--button" data-act="stamp">stamp it ✦</button>
+      <button class="button button--compact holo-surface holo-surface--button" data-act="stamp">stamp it ⟢</button>
     </div>
     <span class="resize" aria-hidden="true"></span>
   </article>
@@ -581,7 +609,7 @@
     <div class="wbody" style="text-align:center">
       <p class="app-hero"><img src="images/os/icons/v95.svg" alt=""></p>
       <p><b>the original icybear.fun. preserved.</b><br>nothing you love dies. it becomes an app.</p>
-      <p style="margin-top:10px"><a class="button button--compact holo-surface holo-surface--button" href="classic/">open the classic ✦</a></p>
+      <p style="margin-top:10px"><a class="button button--compact holo-surface holo-surface--button" href="classic/">open the classic ⟢</a></p>
       <p class="mini">same portrait, same quest log, same everything. it just doesn't have a bear.</p>
     </div>
     <span class="resize" aria-hidden="true"></span>
@@ -658,8 +686,6 @@
   <span class="dsep"></span>
   <button class="dbtn" id="mode-chip" data-act="mode-cycle" data-tip="CLICK TO CYCLE MODE">☁ day</button>
   <button class="dbtn" data-act="capture" data-tip="PRINT SCREEN" aria-label="print screen"><img src="images/os/icons/camera.svg" alt=""></button>
-  <!-- TESTING ONLY: remove this button before the site goes live. -->
-  <button class="dbtn" data-act="phone" data-tip="MOBILE VIEW" aria-label="mobile view"><img src="images/os/icons/phone.svg" alt=""></button>
   <span class="dsep"></span>
   <button class="dbtn" data-app="bags" data-tip="DO NOT OPEN" aria-label="bags"><img src="images/os/icons/bags.svg" alt=""></button>
 </nav>
@@ -713,9 +739,9 @@
           <button class="icon" data-app="quest"><span class="icon__art"><img src="images/os/icons/quest.svg" alt="" draggable="false"></span><span class="icon__label">quest_log</span></button>
           <button class="icon" data-app="resume"><span class="icon__art"><img src="images/os/icons/resume.svg" alt="" draggable="false"></span><span class="icon__label">resume</span></button>
           <button class="icon" data-app="quote"><span class="icon__art"><img src="images/os/icons/quote.svg" alt="" draggable="false"></span><span class="icon__label">quote</span></button>
-          <button class="icon" data-app="diag"><span class="icon__art"><img src="images/os/icons/diag.svg" alt="" draggable="false"></span><span class="icon__label">diagnosis</span></button>
-          <button class="icon" data-app="guest"><span class="icon__art"><img src="images/os/icons/guest.svg" alt="" draggable="false"></span><span class="icon__label">guestbook</span></button>
-          <button class="icon" data-app="stick"><span class="icon__art"><img src="images/os/icons/stick.svg" alt="" draggable="false"></span><span class="icon__label">stickers</span></button>
+          <button class="icon" data-app="diag"><span class="icon__art"><img src="images/os/icons/diag.svg" alt="" draggable="false"></span><span class="icon__label">diagnosis</span><span class="icon__start">get diagnosed</span></button>
+          <button class="icon" data-app="guest"><span class="icon__art"><img src="images/os/icons/guest.svg" alt="" draggable="false"></span><span class="icon__label">guestbook</span><span class="icon__start">sign me</span></button>
+          <button class="icon" data-app="stick"><span class="icon__art"><img src="images/os/icons/stick.svg" alt="" draggable="false"></span><span class="icon__label">decora</span></button>
           <button class="icon" data-app="specs"><span class="icon__art"><img src="images/os/icons/specs.svg" alt="" draggable="false"></span><span class="icon__label">system_specs</span></button>
           <button class="icon" data-app="patch"><span class="icon__art"><img src="images/os/icons/patch.svg" alt="" draggable="false"></span><span class="icon__label">patches</span></button>
           <button class="icon" data-app="terminal"><span class="icon__art"><img src="images/os/icons/terminal.svg" alt="" draggable="false"></span><span class="icon__label">terminal</span></button>

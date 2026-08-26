@@ -263,6 +263,20 @@
     return body.hasAttribute('data-preview') || window.matchMedia('(max-width: 700px)').matches;
   }
 
+  /* THE THIRD SHAPE. Not a third shell -- a portrait tablet gets the desktop,
+     with its composition rotated: apps across the top, icy at the bottom right,
+     windows opening UNDER the apps instead of beside them. os.css section 16
+     owns the layout; this exists because two things that place elements from
+     JavaScript have to agree with it.
+
+     The query is duplicated rather than derived, because there is nothing to
+     derive it from -- a media query is not readable back out of a stylesheet.
+     If one of the two moves the other has to move with it. */
+  function onTablet() {
+    return !onPhone() &&
+      window.matchMedia('(max-width: 1200px) and (orientation: portrait)').matches;
+  }
+
   var toastTimer = null;
   var notifTimer = null;
 
@@ -296,9 +310,40 @@
   }
 
   function nextToast() {
-    if (!toastQueue.length) return;
+    /* Guarded, not just skipped at the far end. Without this a toast timing out
+       while the panel is up would shift itself off the queue and hand straight
+       back to showToast, which re-queues it at the BACK -- so a waiting message
+       could lose its place, or be dropped outright against the cap of three. */
+    if (achBusy || !toastQueue.length) return;
     var q = toastQueue.shift();
     showToast(q[0], q[1], q[2]);
+  }
+
+  /* HOLDING NEW TOASTS BACK WAS ONLY HALF THE RULE. A toast already on screen
+     when a badge lands used to stay there, and #achpop is fixed to the same
+     top:44px / left:50% anchor at the same z-index -- so it did not land beside
+     the toast, it landed ON it.
+
+     Naming the bear is the case that made this the FIRST badge most people
+     ever earn: `<name> has joined icybearOS` fires, earn() runs on the very
+     next line, and the panel drops straight over a message that is still 2.4
+     seconds from timing out.
+
+     So the panel does not merely block the queue, it clears the spot. Whatever
+     is showing comes down and goes to the FRONT of the queue -- with its action
+     and its title, because the capture nudge is the one toast worth waiting for
+     and it arrives stripped of its reason to exist if those are dropped -- and
+     is said again when the panel hands the spot back. */
+  function yieldToast() {
+    var t = el('toast');
+    if (!t.hasAttribute('data-show')) return;
+    var held = [t.textContent, toastAction, t.getAttribute('title') || ''];
+    dismiss(t, toastTimer);
+    t.removeAttribute('data-action');
+    t.removeAttribute('title');
+    toastAction = null;
+    toastQueue.unshift(held);
+    if (toastQueue.length > 3) toastQueue.length = 3;
   }
 
   /* A toast can carry one action. Only the capture nudge uses it, and it is a
@@ -354,9 +399,15 @@
     dismiss(el('toast'), toastTimer);
     if (toastQueue.length) setTimeout(nextToast, 260);
   });
+  /* Same door as the desktop panel, on the shell that has no panel. The phone
+     announces a badge as a notification carrying the patch itself, so tapping
+     it opens badges.sav; every other banner just dismisses. */
   el('pnotif').addEventListener('click', function () {
+    var wasBadge = notifIsBadge;
     dismiss(el('pnotif'), notifTimer);
+    notifIsBadge = false;
     nextNotif();
+    if (wasBadge) openWin('ach');
   });
 
   var ICON_NAMES = ['readme', 'quest', 'resume', 'diag', 'folio', 'stick', 'guest', 'quote',
@@ -368,6 +419,10 @@
      earns a badge in the next line, and the phone is now the shell where naming
      is most likely to happen. */
   var notifQueue = [];
+
+  /* whether the banner currently on screen is an earned badge, which is the
+     only one that is a door rather than a message */
+  var notifIsBadge = false;
 
   function phoneToast(icon, text, ambient) {
     if (el('pnotif').hasAttribute('data-show')) {
@@ -403,6 +458,7 @@
        ids from DEFS ever reach here. */
     icon = String(icon || '✦');
     var patch = icon.indexOf('badge:') === 0;
+    notifIsBadge = patch;
     badge.classList.toggle('notif__icon--patch', patch);
     if (patch) badge.innerHTML = '<img src="images/os/badges/' + icon.slice(6) + '.svg" alt="">';
     else if (icon === 'icy') badge.innerHTML = '<img src="images/os/icy-avatar2.webp" alt="">';
@@ -414,6 +470,7 @@
     clearTimeout(notifTimer);
     notifTimer = setTimeout(function () {
       n.removeAttribute('data-show');
+      notifIsBadge = false;
       nextNotif();
     }, 2800);
   }
@@ -558,8 +615,19 @@
      carries no link at all -- not a disabled one, not a hidden one -- because a
      download URL in the markup is a download, whatever the CSS says about it.
      ========================================================================== */
-  var WALL_MODES = ['day', 'night'];
-  var WALL_KINDS = ['phone', 'desk'];
+  /* ONE WALLPAPER PER THEME, not one per theme per time of day. The day/night
+     split existed because the old art was the sky recoloured, so the sky's two
+     states were the only thing that varied. These are compositions -- each
+     theme's own glyphs, its own structural layer, the wordmark set in its own
+     palette -- and a theme has one of those, not two.
+
+     Desktop and phone sit side by side at the SAME HEIGHT, because that is the
+     honest comparison: they are the same design cut for two screens, and a row
+     that shows a wide one over a tall one makes the tall one look like an
+     afterthought. The phone keeps its 9:19.5, the desktop its 16:10, and the
+     row's height is what they share. */
+  var WALL_KINDS = ['desk', 'phone'];
+  var WALL_PX = { desk: '2560 \u00d7 1600', phone: '1284 \u00d7 2782' };
 
   function renderWallGrid() {
     var host = el('wall-grid');
@@ -567,68 +635,71 @@
     host.innerHTML = '';
     THEMES.forEach(function (t) {
       var open = badges >= t.unlock;
-      WALL_MODES.forEach(function (m) {
-        var tile = document.createElement('figure');
-        tile.className = 'wtile';
-        var slug = t.id + '-' + m;
+      var tile = document.createElement('figure');
+      tile.className = 'wtile';
 
+      var pair = document.createElement('div');
+      pair.className = 'wtile__pair';
+      WALL_KINDS.forEach(function (k) {
         var art = document.createElement('div');
-        art.className = 'wtile__art';
+        art.className = 'wtile__art wtile__art--' + k;
         if (open) {
           var img = document.createElement('img');
-          /* Ten previews is ten requests nobody asked for on a window they may
-             never open, so they load when they scroll into view. Width and
-             height are set so the grid does not reflow as they arrive. */
+          /* Previews only. The full png is 1-2MB and is fetched when somebody
+             actually asks for it, not when the window opens. */
           img.loading = 'lazy';
           img.decoding = 'async';
-          img.width = 480;
-          img.height = 270;
-          img.src = 'images/wall/' + slug + '-t.webp';
-          img.alt = S.themes[t.id] + ', ' + S.wall[m];
+          img.src = 'images/wall/' + t.id + '-' + k + '-t.webp';
+          img.alt = S.themes[t.id] + ', ' + S.wall[k];
           art.appendChild(img);
         } else {
+          /* Still no <img> and still no src: a locked tile has nothing to peel
+             back in devtools. What it has now is a voice -- the two lines say
+             what is behind the door and what it costs, where the old sparkle
+             just looked like a failed load. */
           art.setAttribute('data-locked', '');
-          art.title = S.wall.lockedHint;
+          var q = document.createElement('b');
+          q.className = 'wtile__q';
+          q.textContent = S.wall.lockedQ;
+          var free = document.createElement('i');
+          free.className = 'wtile__free';
+          free.textContent = S.wall.lockedFree;
+          art.appendChild(q);
+          art.appendChild(free);
         }
-        tile.appendChild(art);
-
-        var cap = document.createElement('figcaption');
-        cap.className = 'wtile__cap';
-        var name = document.createElement('b');
-        name.textContent = S.themes[t.id];
-        var when = document.createElement('span');
-        when.className = 'wtile__mode';
-        when.textContent = S.wall[m];
-        cap.appendChild(name);
-        cap.appendChild(when);
-        tile.appendChild(cap);
-
-        var row = document.createElement('p');
-        row.className = 'wtile__get';
-        if (open) {
-          WALL_KINDS.forEach(function (k) {
-            var a = document.createElement('a');
-            a.className = 'wtile__dl';
-            a.href = 'images/wall/' + slug + '-' + k + '.webp';
-            /* The saved file is named for what it is, not for how the repo
-               stores it. Someone with ten of these in a downloads folder should
-               still be able to tell them apart. */
-            a.download = 'icybearOS-' + slug + '-' + k + '.webp';
-            a.innerHTML = '<b></b><i></i>';
-            a.querySelector('b').textContent = S.wall[k];
-            a.querySelector('i').textContent =
-              k === 'phone' ? S.wall.sizePhone : S.wall.sizeDesk;
-            row.appendChild(a);
-          });
-        } else {
-          var lock = document.createElement('span');
-          lock.className = 'wtile__lock';
-          lock.textContent = fmt(S.wall.locked, { n: t.unlock });
-          row.appendChild(lock);
-        }
-        tile.appendChild(row);
-        host.appendChild(tile);
+        pair.appendChild(art);
       });
+      tile.appendChild(pair);
+
+      var cap = document.createElement('figcaption');
+      cap.className = 'wtile__cap';
+      var name = document.createElement('b');
+      name.textContent = S.themes[t.id];
+      cap.appendChild(name);
+      tile.appendChild(cap);
+
+      var row = document.createElement('p');
+      row.className = 'wtile__get';
+      if (open) {
+        WALL_KINDS.forEach(function (k) {
+          var a = document.createElement('a');
+          a.className = 'wtile__dl';
+          a.href = 'images/wall/' + t.id + '-' + k + '.png';
+          /* named for what it is, not for how the repo stores it */
+          a.download = 'icybearOS-' + t.id + '-' + k + '.png';
+          a.innerHTML = '<b></b><i></i>';
+          a.querySelector('b').textContent = S.wall[k];
+          a.querySelector('i').textContent = WALL_PX[k];
+          row.appendChild(a);
+        });
+      } else {
+        var lock = document.createElement('span');
+        lock.className = 'wtile__lock';
+        lock.textContent = fmt(S.wall.locked, { n: t.unlock });
+        row.appendChild(lock);
+      }
+      tile.appendChild(row);
+      host.appendChild(tile);
     });
   }
 
@@ -998,6 +1069,48 @@
      the bug this replaces. A window the visitor has dragged is never moved. */
   var CASCADE_STEP = 28;
 
+  /* THE APP GRID IS NOT A CONSTANT. On a portrait tablet it sits between the
+     menu bar and the first window, and it is two rows on a 1024 slab, three on
+     an 820 and four on a 744. The stylesheet needs that number to cap a window
+     to the desk it actually has, and a media query cannot count icons -- so the
+     grid measures itself and section 16 reads it back. Worst-casing it in CSS
+     instead would cost every wider slab 184px of window for rows it does not
+     have. Harmless off the tablet: nothing outside that section reads it. */
+  function measureDesk() {
+    var g = el('icons');
+    if (!g) return;
+    document.documentElement.style.setProperty('--icons-b',
+      Math.round(g.getBoundingClientRect().bottom) + 'px');
+  }
+
+  /* A TABLET ROTATES, and the cascade is computed once -- when the window
+     opens, from furniture that has since moved. Turn an iPad with read_me open
+     and the window keeps a top measured against a three-row app grid, on a
+     screen that now has no app grid above it at all and 360px less height to
+     fall through. Windows the visitor has dragged are left exactly where they
+     were put; they are not in the cascade any more by their own choice.
+
+     Slots are cleared before any of them is re-placed, or the first window to
+     move would see its own stale slot on the second one and step around a
+     position nothing is going to be in. */
+  function replaceWins() {
+    var loose = all('.win[data-open]').filter(function (w) {
+      return !w.hasAttribute('data-moved');
+    });
+    loose.forEach(function (w) { w.removeAttribute('data-slot'); });
+    loose.forEach(function (w) { placeWin(w); });
+  }
+
+  function remeasure() {
+    measureDesk();
+    replaceWins();
+  }
+
+  measureDesk();
+  window.addEventListener('resize', remeasure);
+  /* rotation on iOS fires resize before the new viewport has settled */
+  window.addEventListener('orientationchange', function () { setTimeout(remeasure, 120); });
+
   function placeWin(w) {
     if (w.hasAttribute('data-moved')) return;
 
@@ -1006,11 +1119,22 @@
        move between breakpoints; a percentage does not. 13% of 1440 put the
        first window at x=187 with the icons ending at x=316, so it opened on top
        of them. */
-    var wall = el('icons').getBoundingClientRect().right;
+    var grid = el('icons').getBoundingClientRect();
     var roof = el('menubar').getBoundingClientRect().bottom;
     var floor = (el('dock') || document.body).getBoundingClientRect().top;
-    var baseX = Math.round(wall) + 28;
+    var baseX = Math.round(grid.right) + 28;
     var baseY = Math.round(roof) + 26;
+
+    /* On a portrait tablet the icons are a block across the TOP, so `beside the
+       icons` is no longer a place -- it is a strip 270px wide against the mood
+       ring, and the clamp below would have dragged every window back left and
+       dropped it on the grid it was supposed to clear. The wall the windows
+       come off is the same furniture either way; on a slab it is the floor of
+       the app grid rather than its right edge. */
+    if (onTablet()) {
+      baseX = Math.round(grid.left);
+      baseY = Math.round(grid.bottom) + 26;
+    }
 
     /* Wrap before the cascade walks under the dock, rather than clamping there:
        clamping would pile every later window on one pixel, which is the bug
@@ -1038,7 +1162,15 @@
     while (used[n] && n < room) n += 1;
     n = n % room;                       /* full house: start the pile again */
     w.dataset.slot = n;
-    w.style.top = (baseY + n * CASCADE_STEP) + 'px';
+    /* The horizontal clamp had no twin, and on a slab that showed. `room` keeps
+       the CASCADE from walking under the dock but it reserves a title bar plus
+       some body, not a whole window -- so a tall window in a late slot still
+       ended up with its last hundred pixels behind the dock. Same rule as the
+       line below it: take the slot unless the slot puts you off the desk, and
+       then take the last position that is still on it. Falling back to baseY
+       rather than going higher, because above baseY is the app grid. */
+    w.style.top = Math.min(baseY + n * CASCADE_STEP,
+                           Math.max(baseY, Math.round(floor) - w.offsetHeight - 16)) + 'px';
     w.style.left = Math.min(baseX + n * CASCADE_STEP,
                             Math.max(8, window.innerWidth - w.offsetWidth - 24)) + 'px';
     w.style.right = 'auto';
@@ -1064,6 +1196,21 @@
     focusWin(app);
     renderDock();
     if (already) { sfx('tap'); return; }
+    /* OPEN FROM WHERE IT WAS CLICKED. win-pop scaled from the window's own
+       centre, which is the same gesture wherever you clicked -- so the icon and
+       the window it produced had no relationship on screen. Anchoring the
+       transform-origin to the clicked icon's centre is what makes it read as
+       the icon opening rather than a card appearing. Falls back to the plain
+       centre pop when there is no icon (the dock, a menu, a deep link). */
+    var from = openWin.from;
+    openWin.from = null;
+    if (from) {
+      var wr = w.getBoundingClientRect();
+      w.style.transformOrigin =
+        (from.x - wr.left) + 'px ' + (from.y - wr.top) + 'px';
+    } else {
+      w.style.transformOrigin = '';
+    }
     sfx('open');
     if (app === 'terminal') termIn.focus();
     bearReact(app);
@@ -1293,7 +1440,13 @@
           if (d < bestDist) { bestDist = d; best = { node: other, rect: b }; }
         });
         if (!best || bestDist > 140) return;
-        var after = y > best.rect.top + best.rect.height / 2;
+        /* Which half of the neighbour you are on depends on which way the list
+           runs. Down the left wall it is the top or bottom half; across the top
+           of a slab it is the left or right half, and asking about `y` there
+           makes every drop land on the same side of whatever you hovered. */
+        var acrossTop = getComputedStyle(iconHost).flexDirection === 'row';
+        var after = acrossTop ? x > best.rect.left + best.rect.width / 2
+                              : y > best.rect.top + best.rect.height / 2;
         iconHost.insertBefore(ghost, after ? best.node.nextSibling : best.node);
       }
 
@@ -2548,6 +2701,44 @@
   var bearJob = false;       /* on a task, and not to be wandered off it */
   var SPEED = 0.055;         /* px per ms */
 
+  /* WHERE THE FLOOR IS. The bear wanders a band of desk and the snowman gets
+     built in the same band. On the desktop that band is a fraction of the
+     viewport, 24% to 60%, and the fraction works because it describes the
+     desktop's composition: it starts past the icon column on the left and stops
+     short of icy on the right.
+
+     A portrait tablet has neither of those walls where the fraction thinks they
+     are. Icy stands at the bottom right of a narrow screen, so 24-60% of it IS
+     her -- the bear walked out across her shins and stayed there, and on a
+     snowy day it built an entire snowman inside her.
+
+     So on a slab the band is measured off her real left edge rather than
+     guessed at. It has to be measured: her width is a function of the pose, the
+     viewport height and the theme, and a percentage knows about none of them. */
+  function floorBand() {
+    if (!onTablet()) {
+      return { lo: window.innerWidth * 0.24, hi: window.innerWidth * 0.60 };
+    }
+    var st = el('standee');
+    var wall = st ? st.getBoundingClientRect().left : 0;
+    /* Before the pose has decoded she is as wide as her caption and no wider,
+       which would hand the bear most of the desk and then take it back a second
+       later. Anything implausible falls back to the fraction. */
+    if (!wall || wall > window.innerWidth * 0.86) wall = window.innerWidth * 0.62;
+    var lo = 24;
+    return { lo: lo, hi: Math.max(lo + 40, wall - (deskBear.offsetWidth || 80) - 24) };
+  }
+
+  /* The stylesheet starts the bear at 38vw, which is the desktop's number and a
+     slab's shin. Put it inside the band before anything has looked at it. */
+  if (onTablet()) {
+    (function () {
+      var b = floorBand();
+      bearX = Math.round(b.lo + (b.hi - b.lo) * 0.4);
+      deskBear.style.left = bearX + 'px';
+    }());
+  }
+
   /* Extracted so the snowman can send the bear somewhere specific. Refusing to
      wander during a build was only half the fix: the bear still built from
      wherever it happened to be standing when the snow started, which is how
@@ -2567,7 +2758,8 @@
 
   function wander() {
     if (!bearIsFree() || onPhone() || bearJob) return;
-    var target = window.innerWidth * (0.24 + Math.random() * 0.36);
+    var band = floorBand();
+    var target = band.lo + Math.random() * (band.hi - band.lo);
     /* "not worth the trip" is a wandering rule, not a walking one. As a guard
        inside walkTo it also swallowed the snowman's request, so the bear could
        arrive up to 30px short and end up standing inside its own snowman. */
@@ -2604,6 +2796,18 @@
   }
 
   ambient(wander, 7000);
+
+  /* A slab rotates, and the band rotates with it. A bear left standing where
+     the old band ended is standing on icy in the new one, so it walks back --
+     visibly, because a pet that teleports on resize is a bug and one that walks
+     is the same pet. Never mid-job: the snowman moved too, and snowmanTick is
+     what puts the bear back at it. */
+  window.addEventListener('resize', function () {
+    if (onPhone() || bearJob) return;
+    var b = floorBand();
+    if (bearX >= b.lo && bearX <= b.hi) return;
+    walkTo(Math.min(Math.max(bearX, b.lo), b.hi));
+  });
 
   /* ---- blinking: a quick dip out of whatever it is doing ---- */
   ambient(function () {
@@ -2840,6 +3044,17 @@
 
   var SNOW_X = 0.52;        /* fraction of the viewport the snowman stands at */
 
+  /* 52% of a slab is icy, and the bear is sent to stand at whatever this
+     returns -- so a snowman placed on her also walks the bear onto her, which
+     is how one fraction put both of them there. Same band the bear wanders,
+     towards its far end so the build still reads as happening out on the desk
+     rather than tucked against the left edge. */
+  function snowmanX() {
+    if (!onTablet()) return window.innerWidth * SNOW_X;
+    var b = floorBand();
+    return b.lo + (b.hi - b.lo) * 0.62;
+  }
+
   function snowmanTick() {
     if (effMode() !== 'snow') return meltSnowman();
     if (snowStage >= 5) return;
@@ -2847,12 +3062,13 @@
     var s = el('snowman');
     s.removeAttribute('data-poof');
     s.dataset.stage = snowStage;
-    s.style.left = 'calc(' + (SNOW_X * 100) + 'vw + ' + (snowStage % 2 ? 0 : 6) + 'px)';
+    var sx = snowmanX();
+    s.style.left = (sx + (snowStage % 2 ? 0 : 6)) + 'px';
 
     /* the bear works at the snowman, not near it */
     if (!onPhone()) {
       bearJob = true;
-      var ms = walkTo(window.innerWidth * SNOW_X - 84);
+      var ms = walkTo(sx - 84);
       setTimeout(function () {
         if (bearJob && snowStage < 5) setBear('happy', 1600);
       }, ms + 40);
@@ -2937,6 +3153,9 @@
      enough to read the name, see the count, and watch the burst finish. */
   var ACH_MS = 6400;
   var achQueue = [], achTimer = null;
+  /* a click and the timeout can both ask for the close; the second one must not
+     run the hand-back twice and shift two things off the queue */
+  var achClosing = false;
 
   /* One panel, two moments. A theme unlocking is the same shape of event as a
      badge -- something you earned, announced once, with the thing itself in the
@@ -2949,7 +3168,15 @@
     var p = el('achpop');
     if (!p) { toast(opts.name, opts.badge ? 'badge:' + opts.badge : 'ach'); return; }
     achBusy = true;
+    achClosing = false;
     var theme = !!opts.theme;
+    /* The panel names a badge at the exact moment you most want to see the rest
+       of them, and it used to be six seconds of glass you could not touch. It
+       is a door now: clicking it opens badges.sav and takes the panel down.
+       Only the badge variant. The theme panel is announcing a sky, and sending
+       that to a cabinet of patches answers a question nobody asked. */
+    p.toggleAttribute('data-open', !theme);
+    p.title = theme ? '' : S.app.achOpen;
     p.toggleAttribute('data-theme-pop', theme);
     if (theme) p.querySelector('.achpop__sky').dataset.motif = opts.theme;
     p.querySelector('.achpop__art').hidden = theme;
@@ -2960,6 +3187,8 @@
     score.textContent = opts.meta || '';
     score.hidden = !opts.meta;
     p.hidden = false;
+    /* the spot has to be EMPTY, not merely reserved -- see yieldToast */
+    yieldToast();
     /* two frames, not one: hidden was removed this tick, and a transition from
        a box that did not exist a moment ago does not run */
     requestAnimationFrame(function () {
@@ -2967,18 +3196,33 @@
     });
     sfx('achieve');
     clearTimeout(achTimer);
-    achTimer = setTimeout(function () {
-      p.removeAttribute('data-show');
-      setTimeout(function () {
-        p.hidden = true;
-        achBusy = false;
-        if (achQueue.length) { achPop(achQueue.shift()); return; }
-        /* the spot is free: anything that arrived while the panel was up gets
-           its turn now rather than being lost behind it */
-        nextToast();
-      }, 460);
-    }, ACH_MS);
+    achTimer = setTimeout(closeAchPop, ACH_MS);
   }
+
+  function closeAchPop() {
+    if (!achBusy || achClosing) return;
+    achClosing = true;
+    clearTimeout(achTimer);
+    var p = el('achpop');
+    p.removeAttribute('data-show');
+    setTimeout(function () {
+      p.hidden = true;
+      p.removeAttribute('data-open');
+      p.removeAttribute('title');
+      achBusy = false;
+      achClosing = false;
+      if (achQueue.length) { achPop(achQueue.shift()); return; }
+      /* the spot is free: anything that arrived while the panel was up gets
+         its turn now rather than being lost behind it */
+      nextToast();
+    }, 460);
+  }
+
+  el('achpop').addEventListener('click', function () {
+    if (!el('achpop').hasAttribute('data-open')) return;
+    closeAchPop();
+    openWin('ach');
+  });
 
   /* replaces the placeholder recorder the earlier milestones wrote against */
   var earn = function (id) {
@@ -3116,7 +3360,7 @@
      are on the desktop. Settings was already exempt by never calling noteApp;
      this is the same rule with somewhere to write it down. */
   /* Not apps for the purposes of the 14/14 tour. faq lives under help and
-     wallpapers lives inside the theme menu and stickers.exe -- neither has a
+     wallpapers lives inside the theme menu and decora.exe -- neither has a
      desktop icon, so neither is somewhere you could be expected to find on a
      walk around the desktop. Adding either to the count would also silently
      un-earn `every` for anyone who already has it. */
@@ -3145,14 +3389,26 @@
     checkSurveys();
   }
 
-  /* One attribute drives the "start here" tag on the read_me icon. It used to
-     clear the first time ANYTHING opened, which is wrong for a label that names
-     one icon: open diagnosis first and the tag vanished from a door you had
-     never been through, having told you nothing. It is a signpost to read_me,
-     so read_me is what takes it down. Still a first-run label -- it can only
-     ever be dismissed by doing the thing it asks. */
-  function markFresh() {
-    body.toggleAttribute('data-fresh', !openedApps.readme);
+  /* One attribute drives the signpost tag, and it walks a short tour: read_me
+     first, then diagnosis, then the guestbook. Each leg is dismissed only by
+     opening the icon it points at -- open something else and the tag stays
+     put, because a label that names one door must not be taken down by a
+     different one.
+
+     Each leg is also skipped outright if that app has already been opened by
+     the time its turn comes. Someone who found diagnosis on their own does not
+     need to be sent there afterwards, and a tag pointing at a door you have
+     already been through says nothing. So the tag sits on the FIRST unvisited
+     stop, and when there are none left it goes away for good. */
+  var GUIDE = ['readme', 'diag', 'guest'];
+
+  function markGuide() {
+    var next = '';
+    for (var i = 0; i < GUIDE.length; i++) {
+      if (!openedApps[GUIDE[i]]) { next = GUIDE[i]; break; }
+    }
+    if (next) body.setAttribute('data-guide', next);
+    else body.removeAttribute('data-guide');
   }
 
   function noteApp(app) {
@@ -3160,11 +3416,11 @@
       openedApps[app] = true;
       write('opened', appKeys().filter(function (k) { return openedApps[k]; }));
     }
-    markFresh();
+    markGuide();
     checkSurveys();
   }
 
-  markFresh();
+  markGuide();
 
   /* a previous session may already have finished one of them */
   checkSurveys();
@@ -4113,8 +4369,29 @@
     if (!chips.length) chips = [S.cap.badgesNone];
     c.font = '700 ' + CAP.chip + 'px ' + MONO;
 
+    /* ONE SOURCE OF TRUTH FOR A CHIP'S WIDTH, because there used to be two and
+       they disagreed twice over.
+
+       A chip was laid out here with `measureText(t) + 70` and then drawn by
+       pill(), which measures the SAME text again and adds `h * 1.35` = 72.9.
+       Two different paddings is a 3px drift per chip -- survivable. The font is
+       what broke it: this ran with whatever c.font the previous slot happened
+       to leave behind (the hallmark's 20px, or a fit() call's, depending on
+       which pass of the fitting loop you were in) while the chips draw at 31px.
+       Measuring 31px type at 20px underestimates every chip by a third, so the
+       row was laid out to a width the pills then overflowed, and they printed
+       through each other.
+
+       So: the font is stated, not inherited, and the padding is the same
+       expression pill() uses rather than a number that looks like it. */
+    var CHIP_FONT = '700 ' + CAP.chip + 'px ' + MONO;
+    function chipW(t) {
+      c.font = CHIP_FONT;
+      return c.measureText(t).width + CHIP_H * 1.35;
+    }
+
     function fitRows(list) {
-      var w = list.map(function (t) { return c.measureText(t).width + 70; });
+      var w = list.map(chipW);
       var out = [[]], run = 0;
       list.forEach(function (t, i) {
         if (run + w[i] > W - 200 && out[out.length - 1].length) { out.push([]); run = 0; }
@@ -4123,6 +4400,17 @@
       });
       return { rows: out, w: w };
     }
+
+    /* CENTRED ON ONE FIXED GAP, NOT JUSTIFIED. Justification was tried and
+       binned: stretching the gaps to make both rows reach the same two
+       verticals meant the space between "godparent" and "emotionally curious"
+       was a different size from the space on the row below it, and the eye
+       reads that as three badges of unequal importance rather than as a tidy
+       block. These are tags, not a paragraph -- the thing worth keeping even is
+       the rhythm between them, and a ragged right edge is the price.
+
+       The overlap that started all this was never the gap. It was the
+       measurement above. */
 
     var earned = chips.slice();
     var rows, cw, chipH;
@@ -4142,6 +4430,7 @@
     /* Every text slot is fitted to this, so nothing can reach the frame. */
     var INNER = W - 200;
     var serial = cardSerial();
+    var tier = serialTier(serial.no);
 
     /* ---- the hallmark ----
        A HALLMARK IS STRUCK INTO A CORNER, and a corner is defined by two edges.
@@ -4174,14 +4463,38 @@
       var right = W - RIM_IN - MARK_PAD;
       var top = RIM_IN + MARK_PAD;
       c.save();
+      var hx = right - hallmark.w, hy = top, hw = hallmark.w, hh = hallmark.h;
       c.beginPath();
-      c.roundRect(right - hallmark.w, top, hallmark.w, hallmark.h, hallmark.h / 2);
-      c.fillStyle = fade('#ffffff') + (dark ? '0.14)' : '0.30)');
-      c.fill();
-      /* the rim is the accent at a third, not a grey: on a card where every
-         colour comes from the live theme, a neutral hairline is the one stroke
-         that would look imported */
-      c.strokeStyle = fade(accent) + '0.34)';
+      c.roundRect(hx, hy, hw, hh, hh / 2);
+      /* BAKED FOIL, AND ONLY ON THE HALLMARK. The site view already wears an
+         animated holo over the whole card and it deliberately does not export;
+         this is the part that has to survive the png, so it is drawn rather than
+         styled. A specular band across it is what makes a still frame read as
+         foil -- a real foil card photographs as one sweep too. */
+      if (tier >= 1) {
+        var fg = c.createLinearGradient(hx, hy, hx + hw, hy + hh);
+        fg.addColorStop(0.00, '#ffd9f2'); fg.addColorStop(0.22, '#c9b6ff');
+        fg.addColorStop(0.44, '#9fe8ff'); fg.addColorStop(0.63, '#c8ffe0');
+        fg.addColorStop(0.82, '#ffe6ad'); fg.addColorStop(1.00, '#ffb3e4');
+        c.fillStyle = fg;
+        c.fill();
+        c.save();
+        c.clip();
+        var sp = c.createLinearGradient(hx, hy, hx + hw * 0.9, hy + hh);
+        sp.addColorStop(0.32, 'rgba(255,255,255,0)');
+        sp.addColorStop(0.46, 'rgba(255,255,255,0.88)');
+        sp.addColorStop(0.60, 'rgba(255,255,255,0)');
+        c.fillStyle = sp; c.fillRect(hx, hy, hw, hh);
+        c.restore();
+        c.strokeStyle = 'rgba(255,255,255,0.95)';
+      } else {
+        c.fillStyle = fade('#ffffff') + (dark ? '0.14)' : '0.30)');
+        c.fill();
+        /* the rim is the accent at a third, not a grey: on a card where every
+           colour comes from the live theme, a neutral hairline is the one stroke
+           that would look imported */
+        c.strokeStyle = fade(accent) + '0.34)';
+      }
       c.lineWidth = 2;
       c.stroke();
 
@@ -4193,10 +4506,12 @@
          labels them, so the run steps BACK in tone rather than out of the
          palette into grey -- one family, one hierarchy. */
       c.font = monoF(CAP.serial);
-      c.fillStyle = fade(accent) + '0.52)';
+      c.fillStyle = tier >= 1 ? 'rgba(74,42,110,0.62)' : fade(accent) + '0.52)';
       c.fillText(hallmark.run, tx, mid);
       c.font = monoF(CAP.serial - 2);
-      c.fillStyle = accent;
+      /* dark on foil regardless of theme: the accent is light on arcade and
+         archangel and would vanish into the gradient it is sitting on */
+      c.fillStyle = tier >= 1 ? '#4a2a6e' : accent;
       c.fillText(hallmark.digits, tx + hallmark.wRun + 1, mid);
       c.restore();
       c.textAlign = 'center';
@@ -4222,6 +4537,33 @@
         tracked(c, label, CX, y + 28, 7);
       } },
       { h: PORTH, gap: 26, grow: 0.9, draw: function (y) { /* portrait plate */
+        /* ONE OF ONE. Rays and a halo, drawn into the canvas BEFORE the plate so
+           they sit behind the bear rather than over it -- and baked, because the
+           card leaves here as a flat png and anything that only exists in CSS is
+           not on the thing people actually see.
+           They read at rest because they are a fixed-origin fan, not a motion
+           effect: the same reason the ceremony's rays work as a still frame. */
+        if (tier === 2) {
+          var mx = CX, my = y + PORTH / 2, R = PORTH * 1.55;
+          c.save();
+          c.beginPath(); c.arc(mx, my, R, 0, Math.PI * 2); c.clip();
+          for (var i = 0; i < 72; i++) {
+            var a0 = (i / 72) * Math.PI * 2, a1 = a0 + 0.026;
+            c.beginPath(); c.moveTo(mx, my);
+            c.lineTo(mx + Math.cos(a0) * R, my + Math.sin(a0) * R);
+            c.lineTo(mx + Math.cos(a1) * R, my + Math.sin(a1) * R);
+            c.closePath();
+            c.fillStyle = i % 2 ? fade('#ffffff') + '0.30)' : fade(accent) + '0.16)';
+            c.fill();
+          }
+          /* the fan has a hard edge at the clip, so a halo fades it out */
+          var hg = c.createRadialGradient(mx, my, PORTH * 0.30, mx, my, R);
+          hg.addColorStop(0, fade('#ffffff') + '0.42)');
+          hg.addColorStop(0.52, fade('#ffffff') + '0.10)');
+          hg.addColorStop(1, fade('#ffffff') + '0)');
+          c.fillStyle = hg; c.fillRect(mx - R, my - R, R * 2, R * 2);
+          c.restore();
+        }
         c.fillStyle = fade('#ffffff') + (dark ? '0.1)' : '0.34)');
         c.beginPath(); c.roundRect(CX - PORT / 2, y, PORT, PORTH, 44); c.fill();
         c.strokeStyle = fade('#ffffff') + '0.5)'; c.lineWidth = 2.5; c.stroke();
@@ -4281,13 +4623,13 @@
         halo(c, dark, function () { tracked(c, S.cap.badgesLabel, CX, y + 22, 4); });
       } },
       { h: chipH, gap: 14, grow: 0.9, draw: function (y) { /* the collection */
-        c.font = '700 ' + CAP.chip + 'px ' + MONO;
+        c.font = CHIP_FONT;
         rows.forEach(function (row, ri) {
           var tot = row.reduce(function (s, i) { return s + cw[i] + CHIP_GAP; }, 0) - CHIP_GAP;
           var x0 = CX - tot / 2;
           row.forEach(function (i) {
             pill(c, chips[i], x0 + cw[i] / 2, y + ri * (CHIP_H + CHIP_GAP), CHIP_H,
-              '700 ' + CAP.chip + 'px ' + MONO, pillBg, accent, fade('#ffffff') + '0.7)');
+              CHIP_FONT, pillBg, accent, fade('#ffffff') + '0.7)');
             x0 += cw[i] + CHIP_GAP;
           });
         });
@@ -4301,8 +4643,11 @@
           top ? fade('#ffffff') + '0.85)' : deco);
       } },
       { h: 28, gap: 16, grow: 0.4, draw: function (y) { /* the aspiration */
+        /* `tier` is the serial's grade, computed once above beside the
+           hallmark's foil -- so the word and the foil can never disagree about
+           whether a card is special. */
         var asp = fmt(S.cap.tier, {
-          tier: S.cap.tiers[wall] || S.cap.tiers.base, n: n, t: total
+          tier: S.cap.tiers[TIER_WORD[tier]] || S.cap.tiers.standard, n: n, t: total
         });
         c.font = monoF(fitOne(c, asp, INNER, 27, 14, monoF));
         c.fillStyle = dim;
@@ -4720,6 +5065,64 @@
      error, and the joke only works if it reads as one. */
   var MISPRINT_ODDS = 40;
 
+  /* ---- WHICH NUMBERS ARE WORTH SOMETHING ---------------------------------
+     Two reserved, and everything else is luck. 0001 and 8888 are pre-inserted
+     rows in the table, so the draw can never return them and they are handed
+     out by claim code instead -- which is also what keeps the proprietor out of
+     the queue for 0001.
+
+     Rare is deliberately thin: about 35 numbers in 9999, so roughly 35 of these
+     will ever exist. Because the server draws rather than counts, rarity is a
+     lottery rather than a function of arrival order, and nothing on the card
+     leaks how many people have been here.
+
+     A rare number can still misprint. They stack: the holo lives on the
+     hallmark and the misregistration lives on the rim, so the two do not fight,
+     and MP-1111 is the rarest object the site can produce. */
+  /* The reserved run: never drawn, only handed out by one-time claim code, so
+     these are the three that exist outside the lottery entirely. Keep this in
+     step with the rows in migration 0006 -- a number that is SUPER here but not
+     reserved there can be dealt to a stranger. */
+  var SUPER = { '0001': 1, '8888': 1, '0621': 1 };
+
+  var RARE = (function () {
+    var r = {};
+    function add(n) { r[n] = 1; }
+    /* repdigits, three and four long */
+    for (var d = 1; d <= 9; d++) {
+      add('0' + d + d + d);
+      add('' + d + d + d + d);
+    }
+    /* the clock family, the ones people actually mean by "angel number" */
+    ['1010', '1212', '1313', '1414', '1515', '1616', '1717', '1818', '1919'].forEach(add);
+    /* named: covenant hour, the CT origin year, the launch year, leet, the 404
+       this site already has a joke about, two of Icy's own, and the sequence */
+    ['1333', '2021', '2026', '1337', '0404', '0420', '0069', '0007', '1234'].forEach(add);
+    /* Icy's own additions. THIS FILE SHIPS TO EVERY VISITOR, so the numbers are
+       public the moment they are here -- which is fine, they are a costume, and
+       the draw is server-side. What must NOT go here is what any of them mean:
+       a list of numbers is nothing, and a list of numbers annotated with whose
+       birthday each one is, is somebody else's personal data published in a
+       public repo. 1212 is deliberately absent -- the clock family above
+       already carries it. */
+    ['0626', '0103', '0221', '0337', '0915'].forEach(add);
+    return r;
+  }());
+
+  /* The word the card prints for each tier. Same index as serialTier's return,
+     so the two cannot drift. */
+  var TIER_WORD = ['standard', 'special', 'one'];
+
+  /* 0 ordinary, 1 rare, 2 one-of-one. Reads the digits off either run code. */
+  function serialTier(no) {
+    var cut = String(no || '').indexOf('-');
+    var digits = cut < 0 ? '' : String(no).slice(cut + 1);
+    if (SUPER[digits]) return 2;
+    if (RARE[digits]) return 1;
+    return 0;
+  }
+
+
   function rand4() {
     try {
       var a = new Uint16Array(1);
@@ -4730,21 +5133,90 @@
 
   function pad4(n) { return ('000' + n).slice(-4); }
 
-  function cardSerial() {
+  function heldSerial() {
     var v = read('serial', null);
-    if (v && typeof v === 'object' && typeof v.no === 'string') return v;
+    return (v && typeof v === 'object' && typeof v.no === 'string') ? v : null;
+  }
+
+  /* The offline path, and the only place a number is invented locally. */
+  function mintLocal() {
     var miss = rand4() % MISPRINT_ODDS === 0;
     /* THE PREFIX IS A SERIES, NOT A COUNT. It used to be 888, and a number in
        front of a number reads as a quantity: 888-0417 invites "417 of 888",
        which is exactly the census the serial exists to avoid. Letters cannot be
        mistaken for a total. ICYB is the standard run, MP the misprint run,
        numbered separately the way a real reject sheet is. */
-    v = { no: (miss ? 'MP-' : 'ICYB-') + pad4(rand4()), misprint: miss };
+    var v = { no: (miss ? 'MP-' : 'ICYB-') + pad4(rand4()), misprint: miss };
     write('serial', v);
     return v;
   }
 
+  function cardSerial() { return heldSerial() || mintLocal(); }
+
+  /* ASK THE SERVER, ONCE, AND ONLY IF THERE IS NOTHING TO KEEP.
+     The number is permanent: a card somebody has already posted must keep the
+     number it was posted with, so a serial that exists is never re-asked and
+     never overwritten. That is also why this runs before the first draw rather
+     than after -- upgrading a number the visitor has already seen would be the
+     same thing as rerolling it.
+
+     The server draw is what makes numbers unique; the local mint is what makes
+     the card work on a plane. The misprint stays a client-side coin flip either
+     way: it is a costume, and the server has no opinion about it. */
+  function withSerial(done) {
+    if (heldSerial() || !backendUp()) { done(); return; }
+    var settled = false;
+    function finish() { if (!settled) { settled = true; done(); } }
+    /* never let a slow backend hold the card shut */
+    var bail = setTimeout(function () { mintLocal(); finish(); }, 2500);
+    fetch(GB.url + '/functions/v1/card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json',
+                 apikey: GB.key, Authorization: 'Bearer ' + GB.key },
+      body: JSON.stringify({ op: 'mint' })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      clearTimeout(bail);
+      if (j && j.ok && typeof j.no === 'string') {
+        write('serial', { no: j.no, misprint: rand4() % MISPRINT_ODDS === 0 });
+      } else { mintLocal(); }
+      finish();
+    }, function () { clearTimeout(bail); mintLocal(); finish(); });
+  }
+
+  /* ONE-TIME CODES, for the two numbers the draw can never return.
+     icybear.fun/?k=<code> -- the claim OVERWRITES, unlike every other path
+     here, because that is the entire point of it: it is how a device that has
+     already been testing gets the number it was always meant to have. */
+  (function claimFromUrl() {
+    var m = /[?&]k=([a-z0-9]{5}-[a-z0-9]{5}-[a-z0-9]{5})/.exec(location.search);
+    if (!m) return;
+    /* out of the address bar immediately: a claim code in a URL is a code in
+       someone's history, their screenshot and their paste buffer */
+    try {
+      history.replaceState(null, '', location.pathname + location.hash);
+    } catch (e) { /* file:// and the like */ }
+    if (!backendUp()) { toast(S.cap.claimOffline, 'camera'); return; }
+    fetch(GB.url + '/functions/v1/card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json',
+                 apikey: GB.key, Authorization: 'Bearer ' + GB.key },
+      body: JSON.stringify({ op: 'claim', code: m[1] })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.ok && typeof j.no === 'string') {
+        write('serial', { no: j.no, misprint: false });
+        toast(fmt(S.cap.claimed, { no: j.no }), 'camera');
+        sfx('unlock');
+      } else {
+        toast(S.cap.claimSpent, 'camera');
+      }
+    }, function () { toast(S.cap.claimOffline, 'camera'); });
+  }());
+
   function openCapture() {
+    /* The number has to exist before the first stroke: drawCapture() reads it
+       synchronously, and a card drawn with a local mint and then corrected a
+       moment later is a card whose number changed while somebody watched. */
+    if (!heldSerial()) { withSerial(openCapture); return; }
     /* the note is a different promise on a phone, where post opens the share
        sheet rather than filling the clipboard */
     var note = document.querySelector('[data-fill="cap-note"]');
@@ -4845,6 +5317,10 @@
       sfx('gn');
     },
 
+    /* The dock button that called this was a testing affordance and is gone.
+       The action stays: #phone-close still clears data-preview, onPhone() still
+       reads it, and the preview is one line away in a console if it is ever
+       wanted again. Deleting it would strand that close handler. */
     phone: function () { body.setAttribute('data-preview', ''); },
 
     themes: function () { el('theme-sheet').toggleAttribute('data-open'); sfx('mode'); },
@@ -5178,6 +5654,15 @@
          another; opening a window has to take it down or the window opens
          underneath it. */
       el('theme-sheet').removeAttribute('data-open');
+      /* Where the window should appear to come from. Only a DESKTOP icon counts:
+         a dock button or a menu row is chrome, and a window flying out of the
+         dock reads as a minimise played backwards. Read here rather than in
+         openWin because this is the only place that knows what was clicked. */
+      var art = appBtn.closest('#icons .icon');
+      if (art) {
+        var ar = art.getBoundingClientRect();
+        openWin.from = { x: ar.left + ar.width / 2, y: ar.top + ar.height / 2 };
+      }
       openWin(appBtn.dataset.app);
       if (appBtn.dataset.folio) filterFolio(appBtn.dataset.folio);
       return;
@@ -5242,7 +5727,11 @@
 
   var HASHES = {
     readme: 'readme', questlog: 'quest', resume: 'resume', diagnosis: 'diag',
-    portfolio: 'folio', stickers: 'stick', guestbook: 'guest', quote: 'quote',
+    portfolio: 'folio', decora: 'stick', guestbook: 'guest', quote: 'quote',
+    /* the app is decora.exe now, but /#stickers is a URL that has been handed
+       out and a word people will still type. A dead deep link is a worse thing
+       to own than a spare one, so the old name keeps working. */
+    stickers: 'stick',
     patches: 'patch', classic: 'v95', terminal: 'terminal', achievements: 'ach',
     specs: 'specs', bags: 'bags'
   };
@@ -5282,7 +5771,8 @@
     'dm-note': S.app.dmNote,
     'ach-pop': S.app.achPop,
     'wall-intro': S.wall.intro,
-    'wall-note': S.wall.note,
+    'wall-free': S.wall.free,
+    'wall-fine': S.wall.fine,
     'wall-open': S.wall.open,
     'faq-intro': S.faq.intro,
     'faq-foot': S.faq.foot,
@@ -5358,10 +5848,15 @@
   }, 700);
   el('boot-flex').textContent = S.boot.flex[0];
 
+  body.setAttribute('data-booting', '');
+
   function endBoot() {
     var boot = el('boot');
     if (boot.hasAttribute('data-done')) return;
     clearInterval(flexTimer);
+    /* released BEFORE the fade, so the desktop is standing behind the boot
+       screen as it clears rather than appearing after it */
+    body.removeAttribute('data-booting');
     boot.setAttribute('data-done', '');
     setTimeout(function () {
       boot.remove();
@@ -5373,7 +5868,10 @@
   }
 
   el('boot').addEventListener('click', endBoot);
-  setTimeout(endBoot, 3000);
+  /* 3s was long enough to see the mark and not long enough to read the bar, so
+     the load line finished off-screen and the whole beat read as a flash. A
+     click still skips it, which is what makes a longer hold safe. */
+  setTimeout(endBoot, 4200);
 
   /* ---------- start ---------- */
   body.dataset.wall = themeById(read('wall', 'base')).id;

@@ -4,15 +4,36 @@
 #
 # This cannot be pg_cron inside Supabase -- if the project is asleep the cron is
 # asleep with it, so it could never wake anything. The ping has to be external.
+# It is also what makes 0003's purge job reliable: that job only runs if the
+# project is awake at 04:17, and this is what guarantees it is.
 #
-# It also doubles as a monitor: the step fails if the wall stops answering, and
-# GitHub emails you. So a broken guestbook reaches you instead of an employer.
+# It doubles as a monitor: any step failing sends GitHub's failure mail. So a
+# broken wall or a function that stopped deploying reaches you instead of an
+# employer.
+#
+# FOUR CHECKS, NOT ONE. Reading a table proves the database answers and says
+# nothing about the edge functions, which are a separate runtime that can be
+# undeployed, mis-secreted or broken on their own -- and which were, invisibly,
+# for as long as nothing called them. Every check runs before the job decides
+# whether to fail, so one outage never hides another.
+#
+# The function checks are OPTIONS preflights. That is a real invocation as far
+# as the platform is concerned, so it counts as activity, and it writes nothing:
+# no guestbook row, no score, no rate-limit consumption.
+#
+# TWO THINGS THAT SILENTLY STOP THIS:
+#   1. `on: schedule` only fires from the repository's DEFAULT branch. A copy of
+#      this file living on a feature branch is never scheduled, no matter how
+#      correct it is.
+#   2. GitHub disables scheduled workflows in a repo with no commit activity for
+#      60 days, and mails you once when it does. Re-enable it from the Actions
+#      tab; nothing here can prevent it.
 #
 # The key below is the publishable one. It already ships inside os.js in this
 # same public repo and is bounded by row level security, so putting it here adds
 # no exposure. The service_role key must never appear in a workflow.
 
-name: keep the guestbook awake
+name: keep supabase awake
 
 on:
   schedule:
@@ -24,18 +45,43 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    env:
+      URL: https://ipvpovvdjwbaizbucrjc.supabase.co
+      KEY: sb_publishable_q3gOsrzRtRpTVCgSoDoaiQ_l4Jmu5QF
     steps:
-      - name: read one row from the guestbook
-        env:
-          URL: https://ipvpovvdjwbaizbucrjc.supabase.co
-          KEY: sb_publishable_q3gOsrzRtRpTVCgSoDoaiQ_l4Jmu5QF
+      - name: ping the database and both edge functions
         run: |
-          code=$(curl -sS -o /tmp/body.txt -w '%{http_code}' \
+          fail=0
+
+          # $1 label  $2 expected code  $3.. curl args
+          check() {
+            label="$1"; want="$2"; shift 2
+            code=$(curl -sS -m 20 -o /tmp/body.txt -w '%{http_code}' "$@" || echo 000)
+            if [ "$code" = "$want" ]; then
+              echo "ok    $label (HTTP $code)"
+            else
+              echo "FAIL  $label (HTTP $code, wanted $want)"
+              head -c 200 /tmp/body.txt || true
+              echo
+              echo "::error::$label did not answer (HTTP $code)"
+              fail=1
+            fi
+          }
+
+          check "guestbook table" 200 \
             "$URL/rest/v1/guestbook?select=id&limit=1" \
-            -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
-          echo "HTTP $code"
-          head -c 200 /tmp/body.txt || true
-          if [ "$code" != "200" ]; then
-            echo "::error::guestbook did not answer (HTTP $code)"
-            exit 1
-          fi
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY"
+
+          check "snake_score table" 200 \
+            "$URL/rest/v1/snake_score?select=id&limit=1" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY"
+
+          check "sign-guestbook function" 200 \
+            -X OPTIONS "$URL/functions/v1/sign-guestbook" \
+            -H "Origin: https://icybear.fun" -H "apikey: $KEY"
+
+          check "snake-score function" 200 \
+            -X OPTIONS "$URL/functions/v1/snake-score" \
+            -H "Origin: https://icybear.fun" -H "apikey: $KEY"
+
+          exit $fail

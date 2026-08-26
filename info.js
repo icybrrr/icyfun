@@ -179,7 +179,7 @@
      not the desktop. Turn those buttons into links that open the desktop with
      that window already up, which is what #quote / #portfolio already do. */
   var HASH_FOR = { readme: 'readme', quest: 'questlog', resume: 'resume', diag: 'diagnosis',
-                   folio: 'portfolio', stick: 'stickers', guest: 'guestbook', quote: 'quote',
+                   folio: 'portfolio', stick: 'decora', guest: 'guestbook', quote: 'quote',
                    patch: 'patches', v95: 'classic', terminal: 'terminal', ach: 'achievements',
                    specs: 'specs' };
 

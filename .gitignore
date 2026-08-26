@@ -24,6 +24,25 @@ images/os/mobile-lockscreen.png
 # the heart Icy drew, traced into geometry by test/icons.py; the png is the source
 images/os/icons/heart.png
 
+# Superseded, and nothing links to them. Kept on disk, off the site.
+#
+# WHY THESE WERE STILL SHIPPING. Listing a path here does nothing to a file git
+# is already tracking -- the rule only decides what git picks up NEXT. Several
+# of the entries above had been written and never followed with an untrack, so
+# 51.6MB sat in the repo under an ignore rule that read as if it had handled it.
+# If a file is added here and it is already committed, it has to be untracked in
+# the same pass: git rm --cached -- <path>
+#
+# the site links favicon-16/32/48/180; these two are from an older set
+images/favicon.png
+images/favicon-512.png
+# POSES loads icy-sit-1..5. This one is not in the sequence and never loads.
+images/os/icy-sit-sleep.webp
+# os.css masks images/os/icybearos-sm.png, which is a different file
+images/os/icybearfun-sm.png
+# only test/og-image.html draws it, and test/ is not deployed
+images/logo.png
+
 # Working files that should not be versioned at all. These are different from
 # the _config.yml exclude list: that one keeps things out of the published
 # site, this keeps them out of the repo entirely.
@@ -53,3 +72,14 @@ _wp-pose.webp
 test/motifs.py
 test/place.py
 images/os/badges/blank/
+
+# Supabase CLI scratch: the linked-project ref and a version stamp. Local
+# state about a machine, not about the site -- and it reappears on every CLI
+# command, so it belongs here rather than in a commit.
+supabase/.temp/
+
+# Source art for the wallpaper compositions, not site assets: the render
+# harness inlines them as base64, and nothing the site serves references either.
+# Kept on disk, off the repo -- same rule as the rest of the unused art.
+images/os/covenant-logo.png
+images/os/icybearos-sm-covenant.png

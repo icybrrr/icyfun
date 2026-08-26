@@ -1156,13 +1156,17 @@ body[data-wall="arcade"] .mdrop a:hover { background: #ffffff1f; }
    nothing saying which one is the door. read_me already shimmered, which draws
    the eye without telling it what to do -- so the tag names the verb.
 
-   It is shown by body[data-fresh], which os.js sets only while NOTHING has ever
-   been opened, and clears the moment anything is. So it is a first-run label
-   rather than a permanent decoration, it cannot nag a returning visitor, and
-   nobody who has already found their way is told where to start.
+   It is shown by body[data-guide], which os.js points at the first stop on a
+   three-icon tour -- read_me, then diagnosis, then the guestbook -- skipping
+   any that have already been opened and disappearing once all three have. So
+   it is a first-run label rather than a permanent decoration, it cannot nag a
+   returning visitor, and only one of the three is ever lit at a time.
 
    Not aria-hidden: it comes after the label in the DOM, so the button reads
-   "read_me.txt, start here", which is the whole point of it. */
+   "read_me.txt, start here", which is the whole point of it. Which is also why
+   the inactive two are visibility:hidden and not merely transparent -- an
+   opacity:0 tag is still read aloud, so three of them would put two labels
+   into the accessible name of icons that are not being pointed at. */
 .icon__start {
   /* Below the label, not beside the tile. Beside put it into the next column --
      the grid's horizontal gap is 6px and the tag is 80 -- so it landed on
@@ -1182,13 +1186,24 @@ body[data-wall="arcade"] .mdrop a:hover { background: #ffffff1f; }
   background: var(--os-accent);
   box-shadow: 0 3px 10px var(--os-shadow);
   opacity: 0;
+  visibility: hidden;
   transform: translateX(-50%) translateY(-4px);
   pointer-events: none;
   transition: opacity var(--motion-enter) var(--ease-standard),
-              transform var(--motion-enter) var(--ease-standard);
+              transform var(--motion-enter) var(--ease-standard),
+              visibility 0s linear var(--motion-enter);
 }
 .icon { position: relative; }
-body[data-fresh] .icon__start { opacity: 1; transform: translateX(-50%) translateY(0); }
+body[data-guide='readme'] .icon[data-app='readme'] .icon__start,
+body[data-guide='diag'] .icon[data-app='diag'] .icon__start,
+body[data-guide='guest'] .icon[data-app='guest'] .icon__start {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  transition: opacity var(--motion-enter) var(--ease-standard),
+              transform var(--motion-enter) var(--ease-standard),
+              visibility 0s;
+}
 /* the little nose pointing back up at the tile */
 .icon__start::before {
   content: '';
@@ -1236,7 +1251,15 @@ body[data-fresh] .icon__start { opacity: 1; transform: translateX(-50%) translat
   border-radius: var(--radius-pill);
   white-space: nowrap;
 }
-.icon--shimmer .icon__art { animation: icon-shimmer 2.6s var(--ease-standard) infinite; }
+/* The shimmer rides with the tag rather than being pinned to read_me in the
+   markup. Two attention magnets pointing at different icons is worse than one,
+   and a read_me that shimmers forever is still asking a returning visitor to
+   start somewhere they have already been. */
+body[data-guide='readme'] .icon[data-app='readme'] .icon__art,
+body[data-guide='diag'] .icon[data-app='diag'] .icon__art,
+body[data-guide='guest'] .icon[data-app='guest'] .icon__art {
+  animation: icon-shimmer 2.6s var(--ease-standard) infinite;
+}
 @keyframes icon-shimmer {
   0%, 100% { box-shadow: var(--elev-raised) var(--os-shadow), inset 0 2px 5px #ffffffcc; }
   50% { box-shadow: 0 4px 22px var(--t-deco), inset 0 2px 5px #ffffffcc; }
@@ -1433,7 +1456,13 @@ body[data-mode="night"] #standee img {
   padding:  var(--space-xs) var(--space-lg);
 }
 @media (max-width: 1120px) { #standee img { max-height: min(58vh, calc(100vh - 300px)); max-width: 48vw; } }
-@media (max-width: 880px) { #standee { display: none; } }
+/* 700, not 880. 880 was the width below which there is no room for her BESIDE a
+   left column of icons -- but that column only exists on the desktop, and every
+   iPad, Surface and folding laptop in portrait was landing under it and losing
+   her entirely. Section 16 gives the portrait slab a layout that has somewhere
+   to put her; below 700 the phone shell hides her along with the whole desktop,
+   so this only ever needed to reach the phone breakpoint. */
+@media (max-width: 700px) { #standee { display: none; } }
 
 /* read_me's two closing sections, paired.
 
@@ -1725,7 +1754,11 @@ body[data-mode="night"] #standee img {
 }
 .win[data-open] { display: flex; animation: win-pop var(--motion-enter) var(--ease-standard); }
 .win[data-closing] { animation: win-close var(--motion-exit) var(--ease-standard) forwards; }
-@keyframes win-pop { from { transform: scale(0.94); opacity: 0; } }
+/* 0.7, not 0.94, and an ease that overshoots slightly. At 0.94 the pop was a
+   twitch; now that it grows out of the icon it is travelling a real distance and
+   wants a real curve. transform-origin is set per open in os.js. */
+@keyframes win-pop { from { transform: scale(0.7); opacity: 0; } }
+.win[data-open] { animation-timing-function: cubic-bezier(.2, .8, .25, 1); }
 @keyframes win-close { to { transform: scale(0.9); opacity: 0; } }
 
 /* Windows behind the front one step back.
@@ -2428,7 +2461,16 @@ body.angel .hire { box-shadow: inset 0 0 0 1px rgba(244, 226, 168, 0.75); }
    way to 880, where the chip itself steps aside for the phone shell's own. */
 /* was `#hire { display: none }` here -- the desktop chip is genuinely not
    wanted at phone widths, but the phone shell now carries its own. */
-@media (max-width: 880px) { #hire { display: none; } }
+/* 800, not 880. The chip is the one conversion point in the menu bar and an
+   820pt iPad was inside the old cut by 60px. Measured rather than guessed: at
+   800 the bar still holds the five menus, the chip and the clock without the
+   chip touching either neighbour. Below that it does, so below that it goes. */
+/* 700, not 800. Below 700 the phone shell takes over and `.hire--phone` carries
+   this, and above 800 the menu bar has always had room -- but between the two
+   the desktop shell renders with no hire affordance at all, which is exactly
+   the tablet band. The site is an argument for hiring her; the button that
+   closes it should not be the first thing responsive design throws away. */
+@media (max-width: 700px) { #hire { display: none; } }
 
 /* THE RECEIPT. Set like one: mono throughout, a dashed rule top and bottom,
    labels left and values right, and a paper that is lighter than the window it
@@ -2615,6 +2657,7 @@ body.angel .hire { box-shadow: inset 0 0 0 1px rgba(244, 226, 168, 0.75); }
    chrome rather than fading in on top of the wallpaper, which is the whole
    trick of the thing it is quoting. */
 #achpop {
+  overflow: hidden;
   position: fixed;
   top: 44px;
   left: 50%;
@@ -2631,7 +2674,45 @@ body.angel .hire { box-shadow: inset 0 0 0 1px rgba(244, 226, 168, 0.75); }
   transition: opacity 320ms var(--ease-standard), transform 420ms var(--ease-enter);
 }
 #achpop[data-show] { opacity: 1; transform: translate(-50%, 0) scale(1); }
+/* THE HALO, shared with the card. Borrowed wholesale from .cer__rays: same
+   conic fan, same downward mask, so a badge, a one-of-one card and the 13/13
+   ceremony all read as one kind of moment rather than three effects.
+   Behind everything and inside the pill, so it lights the panel without
+   touching the patch, the type or the count. */
+.achpop__rays {
+  position: absolute;
+  inset: -40% -18% auto -18%;
+  height: 190%;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  background: repeating-conic-gradient(from 196deg at 50% -22%,
+    rgba(255, 255, 255, 0.5) 0 0.9deg,
+    rgba(203, 169, 244, 0.28) 0.9deg 2.1deg,
+    transparent 2.1deg 5.4deg);
+  -webkit-mask-image: linear-gradient(to bottom, #000 4%, transparent 74%);
+  mask-image: linear-gradient(to bottom, #000 4%, transparent 74%);
+}
+#achpop[data-show] .achpop__rays { animation: achpop-rays 2.6s var(--ease-standard) forwards; }
+@keyframes achpop-rays {
+  0%   { opacity: 0; transform: rotate(-3deg) scale(1.1); }
+  36%  { opacity: 1; }
+  100% { opacity: 0.42; transform: rotate(0deg) scale(1); }
+}
+/* the plate and the words ride above the fan */
+.achpop__plate, .achpop__text, .achpop__score { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) {
+  #achpop[data-show] .achpop__rays { animation: none; opacity: 0.42; }
+}
 #achpop[hidden] { display: none; }
+/* The panel is pointer-events:none so it never eats a click meant for the
+   wallpaper on the way past. The badge variant opts back in, because it is a
+   door to badges.sav; the theme variant stays inert. Only while it is actually
+   on screen -- a box mid-fade that still swallows clicks is worse than one that
+   never took them. */
+#achpop[data-open][data-show] { pointer-events: auto; cursor: pointer; }
+#achpop[data-open][data-show]:active { transform: translate(-50%, 0) scale(0.98); }
 
 .achpop__plate {
   position: relative;
@@ -2831,7 +2912,49 @@ body.angel .hire { box-shadow: inset 0 0 0 1px rgba(244, 226, 168, 0.75); }
   transition: opacity var(--motion-enter);
 }
 #boot[data-done] { opacity: 0; pointer-events: none; }
-#boot-mark { width: min(400px, 74vw); }
+/* THE FIRST FRAME. This was a 400px mark on an empty field of flat lilac, on
+   what is the only screen every single visitor sees. Three changes, no new
+   assets: the sky renders behind it instead of a flat fill, the wordmark takes
+   the room it was leaving empty, and the bar holds long enough to be read. */
+#boot { background: none; }
+/* Not an opaque fill. #sky is already standing behind this -- sky.js builds it
+   at load, well under --z-boot -- so the clouds, stars and drifting motifs are
+   there the whole time and a solid background was the only thing hiding them.
+   This is a bloom instead: white where the wordmark needs contrast, clearing to
+   nothing at the edges so the theme's own sky reads around it. */
+#boot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(74% 60% at 50% 46%,
+    rgba(255, 255, 255, 0.74) 0%,
+    rgba(255, 255, 255, 0.34) 58%,
+    rgba(255, 255, 255, 0) 86%);
+}
+/* A translucent boot screen cannot tell the sky from the furniture: drop the
+   backdrop and the icons, the dock and the standee come through with it, which
+   spoils the reveal rather than deepening it. So the chrome is held back for
+   the length of the boot and the sky is all that shows. It is released before
+   the fade, so the desktop is already there as the screen clears. */
+body[data-booting] #desktop,
+body[data-booting] #windows,
+body[data-booting] #menubar,
+body[data-booting] #dock,
+body[data-booting] #standee { visibility: hidden; }
+/* THE SIGNPOST TAG, AND WHY THIS ONE IS !important.
+   It survives a hidden ancestor because it sets `visibility: visible` on itself
+   -- and it sets it from `body[data-guide=...] .icon[data-app=...] .icon__start`,
+   which is (0,4,1). A plain `body[data-booting] .icon__start` is (0,2,1) and
+   loses, which is why the tag kept showing through the boot screen after the
+   rest of the chrome went.
+   Matching that specificity would work today and break the moment either
+   selector grows a part. This is a STATE override rather than a style -- while
+   the machine is booting, nothing on the desktop is on screen, full stop -- so
+   it says so instead of competing. It applies to both shells, since the tag
+   lives on the phone grid too. */
+body[data-booting] .icon__start { visibility: hidden !important; }
+#boot-mark { width: min(620px, 82vw); }
 #boot .flex { font: 700 var(--text-body)/var(--lh-body) var(--font-mono); color: var(--purple-text); min-height: 20px; }
 #boot .bar {
   width: min(260px, 66vw);
@@ -2847,7 +2970,9 @@ body.angel .hire { box-shadow: inset 0 0 0 1px rgba(244, 226, 168, 0.75); }
   width: 0;
   border-radius: var(--radius-pill);
   background: linear-gradient(90deg, #c4f0ff, #e07bb8, #c58ae0);
-  animation: boot-load 2.6s var(--ease-standard) forwards;
+  /* paced to the 4.2s hold, so the bar fills as the screen ends rather than
+     completing a second and a half before anything happens */
+  animation: boot-load 3.9s var(--ease-standard) forwards;
 }
 @keyframes boot-load { to { width: 100%; } }
 #boot .press {
@@ -3596,21 +3721,68 @@ body[data-mode="night"] #peek { filter: drop-shadow(0 8px 20px rgba(10, 6, 30, 0
 }
 .diag-line { font-size: var(--text-body); font-weight: 700; color: var(--os-accent); }
 
+/* ---- what she actually did ----
+   The claims were buried in a paragraph at body size: "$250K", "50K+", "400+
+   attendee" all set exactly like the words around them. A hiring manager scans
+   a role in about three seconds and a paragraph does not survive that.
+   Bulleted, with the number pulled out in the accent. Deliberately NOT a
+   separate stat row: these are the same sentences, given a shape, rather than a
+   second treatment of facts already on the card. */
+.deed {
+  list-style: none;
+  margin:  var(--space-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap:  var(--space-xs);
+}
+.deed li {
+  position: relative;
+  padding-left: 1.35em;
+  font: 400 var(--text-caption)/1.55 var(--font-body);
+  color: var(--os-ink);
+}
+/* the same mark that ends every call to action, here as the bullet */
+.deed li::before {
+  content: '\27E2';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--os-accent);
+  opacity: .72;
+}
+.deed__n {
+  font-weight: 800;
+  color: var(--os-accent);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- portfolio ---- */
 /* Two up, not four. At auto-fill/120px this grid put four tiles across a 470px
    window body, so each piece of work rendered about 116px wide. Ten thumbnails
    at a size where nothing is readable is worse than five you can actually see,
    on the one panel whose entire job is showing the work. */
+/* MASONRY, BECAUSE THE PIECES ARE NOT ONE SHAPE. The ten range from 0.82 to
+   1.90 in aspect, and a fixed 4:3 frame with object-fit:contain letterboxed
+   every single one of them -- ten images floating in ten boxes that fit none of
+   them. Columns instead: each tile keeps its own ratio, so nothing is padded
+   and every piece gets the height its composition asks for.
+   CSS columns rather than grid-masonry, which is still not shipping anywhere.
+   The cost is reading order down each column instead of across, which for a
+   contact sheet of work is not a cost. */
 .folio-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap:  var(--space-lg);
+  columns: 2;
+  column-gap:  var(--space-lg);
   margin:  var(--space-sm) 0 var(--space-xs);
+}
+.wbody .work-item {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  margin-bottom:  var(--space-lg);
 }
 .wbody .work-item { display: flex; flex-direction: column; gap:  var(--space-xs); }
 .wbody .work-item__frame {
   position: relative;
-  aspect-ratio: 4 / 3;
   padding:  var(--space-hair);
   overflow: hidden;
   border: none;
@@ -3624,11 +3796,14 @@ body[data-mode="night"] #peek { filter: drop-shadow(0 8px 20px rgba(10, 6, 30, 0
    single frame ratio fits them and `cover` was cutting the difference off every
    one of them. The mat behind is --t-art, a designed gradient, so letterboxing
    reads as a frame rather than as a gap. A portfolio should not crop the work. */
+/* height:auto and no object-fit: the frame now takes the image's shape rather
+   than the image being fitted into the frame's. `contain` was the right answer
+   to a fixed ratio and is the wrong one once the ratio is gone -- it would leave
+   the letterboxing behind in a box that no longer needs it. */
 .wbody .work-item__frame img {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: contain;
+  height: auto;
   border-radius: var(--radius-md);
 }
 .wbody .work-item__expand {
@@ -3651,6 +3826,15 @@ body[data-mode="night"] #peek { filter: drop-shadow(0 8px 20px rgba(10, 6, 30, 0
 }
 
 /* ---- sticker album ---- */
+/* decora.exe's drop line, and the one label on the sheet that has to out-read a
+   number. It is .os-mono, which is the OS's own small label already: accent
+   colour, mono face, uppercase, tracked. Four things change at once between the
+   label and the sentence it sits in, which is more separation than a pill or a
+   rule would buy -- and a pill here would out-shout the four cards underneath
+   it, which are the actual content of the window. Inline, on the sentence's own
+   baseline, one word wide. */
+.drop-new { margin-right:  var(--space-sm); }
+
 .stk-sheet { display: grid; grid-template-columns: repeat(2, 1fr); gap:  var(--space-md); margin:  var(--space-sm) 0 var(--space-hair); }
 .stk {
   padding:  var(--space-lg) var(--space-md);
@@ -3687,21 +3871,83 @@ button.stk--live b { color: inherit; }
    Two columns of 16:9 previews. `auto-fill` with a floor rather than a fixed
    count, so the same grid is one column on a phone and three in a window
    someone has dragged wide, with nothing to re-declare at a breakpoint. */
+/* THE HEADER IS A LOCKUP, NOT THREE PARAGRAPHS. Each line steps down in weight,
+   size and volume -- pitch, price, punchline -- so the last one lands as an
+   aside rather than as another claim. The steps are tight (a hair between the
+   lines) and the space is spent below the block instead, which is what keeps
+   the three reading as one thing. */
+.wall-head {
+  margin-bottom: var(--space-md);
+  text-align: center;
+}
+/* SIZED OFF THE SCALE, THREE STEPS APART: subhead, lead, body. The first pass
+   set these at body/caption/micro, which put the drop's headline at 12px --
+   SMALLER than the plain intro line every other window carries, since .wbody
+   sets --text-lead and those inherit it. A shop window cannot open quieter than
+   a text file.
+   The bottom of the scale is where legibility goes first, and micro mono is the
+   worst case of it: 8px of Space Mono is a texture, not a sentence. */
+/* BAGEL, AND AT 400 AND A STEP LARGER. Two things follow from the family, not
+   from taste. The face ships one weight, so asking for 800 would get a
+   synthetic bold -- the browser smearing the outline sideways -- on a display
+   face whose entire character is its drawn weight. And it is optically smaller
+   than Montserrat at the same px: fat strokes, tiny counters, so 17 congealed
+   where the sans read fine. Title, not subhead. Colour goes to full ink for the
+   same reason -- dim on strokes that heavy looks washed rather than quiet. */
+.wall-head__t {
+  font: 400 var(--text-title)/var(--lh-title) var(--font-display);
+  color: var(--os-ink);
+  /* it wraps to two lines in a narrow window; balance makes that look chosen */
+  text-wrap: balance;
+}
+.wall-head__free {
+  margin-top: var(--space-xs);
+  font: 700 var(--text-lead)/var(--lh-lead) var(--font-body);
+  color: var(--os-accent);
+}
+/* Mono and quiet: the fine print of a thing that has no fine print. It is a
+   step below the price rather than three, and stays the aside on weight, family
+   and colour instead of on size -- 400 against 700, mono against Montserrat,
+   dim ink against the accent. That is enough to be read last without being
+   hard to read. */
+.wall-head__fine {
+  margin-top: var(--space-hair);
+  font: 400 var(--text-body)/var(--lh-body) var(--font-mono);
+  letter-spacing: var(--track-wide);
+  color: var(--os-ink-dim);
+  opacity: 0.72;
+}
 .wall-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
-  gap: var(--space-lg);
+  /* One theme per row now, not two tiles. The pair inside is wide, so a
+     two-column grid would halve it back to thumbnails. */
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-xl);
   margin: var(--space-md) 0 var(--space-sm);
 }
 .wtile { margin: 0; }
+/* DESKTOP AND PHONE AT THE SAME HEIGHT. The row sets the height and each
+   preview keeps its own aspect, so 16:10 and 9:19.5 sit as equals instead of
+   the tall one being scaled to a wide one's box. align-items:stretch does the
+   work; the widths fall out of the aspect ratios. */
+/* The column ratio IS the two aspect ratios: 16:10 is 1.6 wide per unit of
+   height and 9:19.5 is 0.4615, so columns in that ratio come out the same
+   height by construction and together fill the row. A fixed pixel height left
+   the pair sitting in half a row of empty space. */
+.wtile__pair {
+  display: grid;
+  grid-template-columns: 1.6fr 0.4615fr;
+  gap: var(--space-sm);
+}
 .wtile__art {
   position: relative;
-  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: var(--radius-md);
   border: 1px solid var(--os-border-strong);
   background: var(--os-pill);
 }
+.wtile__art--desk  { aspect-ratio: 16 / 10; }
+.wtile__art--phone { aspect-ratio: 9 / 19.5; }
 .wtile__art img {
   display: block;
   width: 100%;
@@ -3711,20 +3957,44 @@ button.stk--live b { color: inherit; }
 /* A locked tile is a shut door, not a blurred picture: there is no preview
    element at all, so nothing to peel back with a devtools inspector.
 
-   And a shut door is short. At the full 16:9 the seven locked tiles of a first
-   visit are seven screens of empty box between the two things you can actually
-   have. Both tiles in a row lock and unlock together -- they are one theme's day
-   and night -- so the row still comes out even. */
+   IT KEEPS ITS SHAPE. It used to squash to 16:5 to save vertical room, which
+   did save it and cost more: a first visit became a column of letterbox slots
+   with two real wallpapers wedged in among them, and nothing about that column
+   told you the slots were the same size as the prizes. At the true 16:10 and
+   9:19.5 the locked box IS the unlocked box, so what you earn is exactly the
+   shape of the hole it fills. Both tiles in a pair lock and unlock together, so
+   the row still comes out even.
+
+   The cost is real and worth naming: a first visit has four locked themes, so
+   that is four full rows of scroll where it used to be four strips. That is the
+   trade -- the scroll is the size of what you have not got yet. */
 .wtile__art[data-locked] {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 16 / 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-hair);
+  padding: var(--space-sm);
   border-style: dashed;
+  text-align: center;
 }
-.wtile__art[data-locked]::after {
-  content: '✧';
-  font-size: var(--text-title);
+/* Bagel is the OS's own display face, so the question marks read as the system
+   speaking rather than as placeholder art. */
+.wtile__q {
+  font: 400 var(--text-title)/1 var(--font-display);
   color: var(--os-ink-dim);
+  letter-spacing: var(--track-wide);
+  /* letter-spacing adds after the LAST glyph too, so a centred run sits half a
+     track left of true centre. Pull it back. */
+  margin-right: calc(var(--track-wide) * -1);
+}
+.wtile__free {
+  max-width: 22ch;
+  font: 600 var(--text-caption)/1.4 var(--font-body);
+  font-style: normal;
+  color: var(--os-ink-dim);
+  opacity: 0.85;
+  text-wrap: balance;
 }
 .wtile__cap {
   display: flex;
@@ -4775,3 +5045,109 @@ body.shout { animation: shout var(--motion-enter) var(--ease-standard); }
   animation: floaty 1.4s var(--ease-standard) forwards;
 }
 @keyframes floaty { to { transform: translateY(-70px); opacity: 0; } }
+/* --------------------------------------------------------------------------
+   16. TABLET  (no new z-index -- this IS the desktop shell, re-proportioned)
+
+   There were two shells and three shapes of screen. Below 700 the phone takes
+   over and the site is the phone. Above about 1200 the desktop has room for its
+   own composition: a column of icons against the left wall, icy standing on the
+   right, and windows cascading through the gap between them. A portrait tablet
+   has neither. It is wide enough that it was being handed the desktop, and far
+   too narrow to hold the desktop's three columns, so the gap the windows
+   cascade through was never there and icy was simply deleted at 880px rather
+   than fitted.
+
+   What a portrait slab has instead is HEIGHT. So the composition rotates: the
+   apps become a grid across the top the way a tablet home screen is, the mood
+   ring keeps the top right, icy stands at the bottom right, and windows open
+   under the apps rather than beside them.
+
+   Landscape tablets are not in here on purpose. A landscape iPad is a short,
+   wide desktop and the desktop layout already fits it -- it has the horizontal
+   gap, and rotating into it is a real change in what the screen can hold rather
+   than a cosmetic one. The only thing both orientations share is the dock,
+   below, and that is bounded by width because it is a width problem.
+   -------------------------------------------------------------------------- */
+/* The dock is one row or it is nothing. It wraps at 96vw, and on the narrowest
+   slabs that landed the bin on a second line under everything else -- which is
+   not cosmetic: the dock grows a button per open window, so the second row is
+   the one that moves, and it moves up into icy's caption. Four pixels off the
+   gap and eight off the ends buys back the 40 it needed, without touching the
+   buttons themselves. A width bound rather than an orientation one, because
+   this is a width problem: 912 and up already fit, so they are left alone. */
+@media (min-width: 701px) and (max-width: 900px) {
+  #dock { gap: var(--space-hair); padding: var(--space-md) var(--space-lg); }
+}
+
+/* ---- portrait slab: the composition rotates ---- */
+@media (min-width: 701px) and (max-width: 1200px) and (orientation: portrait) {
+  /* Windows were sized for a 1440 desk and then allowed onto an 820 one. 92vw
+     of an 820 slab is a 754px window, which is the whole screen, and read_me's
+     own 780 was wider than the device. Portrait only: a landscape slab is a
+     short wide desk with 1180 of room, and 733 of window on it was never the
+     problem this is solving. */
+  .win { max-width: min(92vw, 660px); }
+
+  /* THE APPS GO ACROSS THE TOP. Same element, same drag-to-reorder, one axis
+     turned: a column that wraps into columns becomes a row that wraps into
+     rows. `right` is what makes it a grid rather than a strip -- it stops the
+     row short of the mood ring instead of running under it, and at these widths
+     that lands on three to six per row, which is the shape of a home screen.
+     `bottom: auto` because the block is now sized by its contents; the base
+     rule pins it to the dock, which is what forced the column in the first
+     place. */
+  #icons {
+    top: 150px;
+    left: 28px;
+    right: 272px;
+    bottom: auto;
+    max-width: none;
+    flex-direction: row;
+  }
+
+  /* She was `display: none` under 880px, which is most of the tablets people
+     actually hold. The desktop hid her because there was no room beside a left
+     column of icons; with the icons across the top the bottom right is empty
+     and it is hers. Sized off the floor rather than the viewport: 620 is the
+     worst-case app grid (four rows on the narrowest slab) plus her own 74px of
+     ground clearance, so she cannot grow up into the apps on any width in the
+     band. */
+  #standee {
+    display: block;
+    right: 24px;
+  }
+  #standee img {
+    /* 46vh was cautious: it was set to clear an icon COLUMN, and the icons went
+       to the top in this shell, so the whole width below them is hers. The
+       desktop gives her about 70vh and this was giving 46, which is why she read
+       as shrunken rather than merely smaller. */
+    max-height: min(56vh, calc(100vh - 540px));
+    max-width: 76vw;
+  }
+
+  /* The window body's cap is furniture arithmetic, and the furniture moved. The
+     desktop subtracts 228: menu bar, the drop below it, the dock and a title
+     bar. Here the app grid sits between the menu bar and the first window, so
+     the grid has to be in the sum too -- and it is the one piece that is not a
+     constant. Twelve icons are two rows on a 1024 slab, three on an 820 and
+     four on a 744: a 184px swing that a stylesheet cannot see. Worst-casing it
+     would cost the wider slabs 184px of window for rows they do not have, so
+     os.js measures the grid and publishes its floor as --icons-b.
+
+     What is left is genuinely fixed. Untabbed: 26 of drop, 44 of title bar, 64
+     of dock and 20 of air = 154. Tabbed pays 39 more for its tab strip = 193.
+     The 52vh term does nothing at these sizes and exists so a 1366-tall slab
+     does not produce a wall of window, which is the same job it does on the
+     desktop. The fallback covers the frame before os.js has measured; no window
+     is open then. */
+  .win .wbody:not(.wbody--tabbed) {
+    max-height: min(52vh, calc(100vh - var(--icons-b, 480px) - 154px));
+  }
+  .win .wbody--tabbed {
+    height: min(52vh, calc(100vh - var(--icons-b, 480px) - 193px));
+  }
+  .win[data-resized] .wbody,
+  .win[data-zoom] .wbody { max-height: none; }
+  .win[data-resized] .wbody--tabbed,
+  .win[data-zoom] .wbody--tabbed { height: auto; }
+}
