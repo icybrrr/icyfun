@@ -21,7 +21,7 @@ window.OS_STRINGS = {
   /* ---------- system chrome ---------- */
   sys: {
     /* the version sits beside the logo now, not in the subtitle line */
-    ver: 'v1.0',
+    ver: 'v1.1',
     /* the one thing on this site addressed to an employer rather than to a
        visitor, which is why it gets the middle of the bar to itself */
     hire: 'for hire',
@@ -129,13 +129,6 @@ window.OS_STRINGS = {
      attention. Rendered as <details>, so open/close costs no javascript.
 
      Every answer here has to stay true of the actual build. If a behaviour
-     changes, this file changes with it. */
-  /* ---------- faq ----------
-     Lives under help, not on the desktop: someone who wants this is looking
-     for it, and an icon for it would compete with read_me for the same
-     attention. Rendered as <details>, so open/close costs no javascript.
-
-     Every answer here has to stay true of the actual build. If a behaviour
      changes, this file changes with it.
 
      Authored in Vaultito -> icybear.fun/faq-copy.md, which is the sheet icy
@@ -150,7 +143,7 @@ window.OS_STRINGS = {
         ['what do you actually do?',
          'i wear many hats: community, design, content, marketing, operations, people. i especially love making memes. everything on this OS is one of them wearing a costume. <b>system_specs.exe</b> has the list.'],
         ['what does it cost?',
-         'depends entirely on scope. <b>request a quote</b> asks four questions, and the answers let me reply with a number. interested? you know what to do.'],
+         'depends entirely on scope. open <b>quote.exe</b>, tell me what you are building, and i will tell you what it costs. interested? you know what to do.'],
         ['full-time or freelance?',
          'currently, both. say which one you mean when you write and i will answer for that one.'],
         ['do you work with my timezone?',
@@ -174,9 +167,9 @@ window.OS_STRINGS = {
       ]],
       ['✦ WHAT THIS SITE KNOWS', [
         ['do you track me?',
-         'no analytics, no ad pixels, no tracking scripts. the fonts are served from here, not from google. nothing here follows you anywhere after you close the tab. i am graciously anon-friendly.'],
+         'no analytics, no ad pixels, no tracking scripts. the fonts are served from here, not from google. nothing here follows you anywhere after you close the tab. the one exception, and it only happens if you ask for it: put your @ on a visit card and unavatar.io fetches that profile picture, so they see the handle you typed. i am graciously anon-friendly.'],
         ['what do you store?',
-         'your bear’s name, your theme, which badges you have, and your guestbook stamp if you left one. the first three sit in your browser. the stamp sits in a database, because a wall of one is not a wall. make a product key and the first three get a copy in the database too, so another device can pick them up.'],
+         'in your browser: your bear’s name, your theme, your badges, your diagnosis if you took it, your sticky notes, and the @ you typed if you put one on a card. in a database: your guestbook stamp, because a wall of one is not a wall, and your snake score if you signed the board, because a board of one is not a board either. make a product key and your badges, bear and theme get a copy in the database too, so another device can pick them up. that is the whole list.'],
         ['can i get that deleted?',
          'settings has <b>forget me on this device</b>, which clears the local half instantly. for a guestbook stamp or a product key, message me... just know it would make me sad.'],
         ['is the guestbook moderated?',
@@ -394,12 +387,12 @@ window.OS_STRINGS = {
     gaugeTipSnow: 'peak delulu. it is snowing.',
     icyTime: 'icy time:',
     you: 'you: {n}m on this computer',
-    patchTeaser: 'v1.0 · "it boots. it remembers you. the bear has a name now."',
+    patchTeaser: 'v1.1 · "ten skies, free. your card has a number on it now."',
     lines: {
       day: 'mood: functional! suspicious.',
       night: 'mood: do not perceive me.',
       rain: 'mood: tea and blankie cuddles coded. very cool.',
-      snow: 'mood: thriving. break out the Glühwein.'
+      snow: 'mood: thriving. break out the glühwein.'
     }
   },
 
@@ -674,9 +667,10 @@ window.OS_STRINGS = {
     achPop: 'badge unlocked',
     themePop: 'theme unlocked',
     achScore: '{n}/{t}',
-    /* hover title on the badge panel, which is clickable. Not on the theme
-       panel -- that one announces a sky, not a patch. */
+    /* hover titles on the two clickable panels. The badge panel opens the
+       cabinet; the theme panel opens the menu you would have to go find. */
     achOpen: 'open badges.sav',
+    themeOpen: 'put it on',
     seeWork: 'see the work ⟢',
     folioAll: 'all',
     stampTwice: 'one stamp per visitor. i said what i said.',
@@ -689,12 +683,12 @@ window.OS_STRINGS = {
     setFaq: 'faq',
     setFaqSub: 'the questions people actually ask',
     setAbout: 'about icybearOS',
-    setAboutSub: 'v1.0 ✦ built by hand',
+    setAboutSub: 'v1.1 ✦ built by hand',
     setForget: 'forget me on this device',
     setForgetSub: 'clears everything stored here. your key still restores it.',
     setForgetWarn: 'this clears your badges, your bear and your theme from this device. your product key can restore them. carry on?',
     setForgetDone: 'forgotten. refreshing…',
-    setAboutSay: 'icybearOS v1.0 ✦ vanilla js, no frameworks, a lot of arguing.',
+    setAboutSay: 'icybearOS v1.1 ✦ vanilla js, no frameworks, a lot of arguing.',
     pkeyEyebrow: 'your product key',
     pkeyNote: 'this is the only way back to your badges. we suggest writing it down. not your keys, not your bear.',
     pkeyCopy: 'copy',
@@ -711,7 +705,7 @@ window.OS_STRINGS = {
     pkeyRestored: 'welcome back. your badges are here.',
     pkeyRotated: 'new key made. the old one is dead now.',
     pkeyReplaceWarn: 'restoring replaces your bear name and theme. carry on?',
-    pkeyRotateWarn: 'your old key stops working immediately. carry on?',
+    pkeyRotateWarn: 'your old key stops working immediately. make the new one?',
     pkeyOffline: 'cannot reach the vault. try again in a bit.',
     pkeyNone: 'no key yet. earn a few badges first.',
     pkeyMade: 'a product key. keep it somewhere safe.',
@@ -732,8 +726,6 @@ window.OS_STRINGS = {
       closed: 'the wall is closed right now.',
       backend: 'the wall is having a moment. try again in a bit.'
     },
-    briefCopied: 'brief copied. paste it in the dm. see you there ♡',
-    briefNoClip: 'clipboard said no. the dm is open, tell me yourself.',
     diagWhen: 'filed {d} · retakes overwrite it'
   },
 
@@ -821,7 +813,6 @@ window.OS_STRINGS = {
     labelAch: 'EARNED',
     labelVerdict: 'VERDICT',
     more: '+{n} MORE',
-    visit: 'visit {n}',
     tier: '{tier} · {n} of {t} badges found',
     /* THIS GRADES THE CARD, NOT THE PERSON'S TASTE.
        It used to grade the THEME -- standard issue / uncommon / rare / epic /
@@ -856,8 +847,6 @@ window.OS_STRINGS = {
     fine: '(OS sold separately)',
     phone: 'phone',
     desk: 'desktop',
-    day: 'day',
-    night: 'night',
     locked: 'locked · {n} badges',
     /* A LOCKED TILE TALKS. It used to be a dashed box with a sparkle in it,
        which reads as "broken" rather than "not yet". These two lines are the
@@ -866,9 +855,6 @@ window.OS_STRINGS = {
        the pair is only about 120px wide. */
     lockedQ: '???',
     lockedFree: 'earning badges will set me free',
-    /* the numbers moved into os.js beside the export sizes, so the two cannot
-       drift apart the way they had: these said 2560x1440 for art that is 16:10 */
-    got: 'saved ✦ {name}',
     open: '↓ get these as wallpapers'
   },
 
@@ -885,6 +871,11 @@ window.OS_STRINGS = {
     final: 'the thirteenth · all badges',
     lockedMeta: 'locked · {n} badges',
     /* the phone's fallback: it has no room for the panel, so it says it in a line */
-    opened: '{name} unlocked ✦'
+    opened: '{name} unlocked ✦',
+    /* 13/13. The unlock does NOT play the ceremony any more -- that belongs to
+       the switch, where it can be replayed and recorded -- so this is what
+       stands in for it: the pointer, not the payoff. It has to promise that
+       something happens without saying what, or the reveal is spent here. */
+    thirteenth: 'archangel is yours now. put it on. it does something.'
   }
 };

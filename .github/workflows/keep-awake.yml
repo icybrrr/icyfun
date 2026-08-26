@@ -84,4 +84,16 @@ jobs:
             -X OPTIONS "$URL/functions/v1/snake-score" \
             -H "Origin: https://icybear.fun" -H "apikey: $KEY"
 
+          # save and card are the two that fail SILENTLY. A dead `save` shows up
+          # only as "cannot reach the vault" inside a settings panel; a dead
+          # `card` sends every edition number down the local mint, which nobody
+          # sees at all.
+          check "save function" 200 \
+            -X OPTIONS "$URL/functions/v1/save" \
+            -H "Origin: https://icybear.fun" -H "apikey: $KEY"
+
+          check "card function" 200 \
+            -X OPTIONS "$URL/functions/v1/card" \
+            -H "Origin: https://icybear.fun" -H "apikey: $KEY"
+
           exit $fail

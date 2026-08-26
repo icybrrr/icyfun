@@ -938,12 +938,19 @@ a:hover {
   justify-content: center;
   padding:  var(--space-3xl);
   opacity: 0;
+  /* visibility, not just opacity: an opacity-0 lightbox keeps its close button
+     and its image in the tab order for the whole session, and they are
+     focusable descendants of an aria-hidden container. */
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity var(--motion-exit) var(--ease-standard);
+  transition: opacity var(--motion-exit) var(--ease-standard),
+              visibility 0s linear var(--motion-exit);
 }
 .lightbox.is-open {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
+  transition-delay: 0s;
 }
 
 .lightbox__backdrop {

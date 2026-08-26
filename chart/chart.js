@@ -334,6 +334,7 @@
   var loadingLineEl = document.getElementById('chart-loading-line');
   var dotGlowEl = document.getElementById('chart-dot-glow');
   var burstEl = document.getElementById('chart-burst');
+  var canvasFrame = document.querySelector('.chart-canvas-frame');
 
   // Canvas export cache, refreshed at the end of every render(). Having
   // this ready ahead of time (instead of generating it on-demand inside a
@@ -668,12 +669,12 @@
   function ensureFonts() {
     if (fontsReady) return Promise.resolve();
     var loads = [
-      document.fonts.load('400 90px "Bagel Fat One"'),
-      document.fonts.load('500 24px "Montserrat"'),
-      document.fonts.load('700 24px "Montserrat"'),
-      document.fonts.load('800 24px "Montserrat"'),
-      document.fonts.load('400 24px "Space Mono"'),
-      document.fonts.load('700 24px "Space Mono"')
+      document.fonts.load('400 90px ' + DISP),
+      document.fonts.load('500 24px ' + BODY),
+      document.fonts.load('700 24px ' + BODY),
+      document.fonts.load('800 24px ' + BODY),
+      document.fonts.load('400 24px ' + MONO),
+      document.fonts.load('700 24px ' + MONO)
     ];
     return Promise.all(loads).then(function () {
       return document.fonts.ready;
@@ -689,6 +690,24 @@
   var FOOTER_SIZE = 74;   /* read by render() and by drawFooter() */
   var CARD_H = 1350;
 
+  /* EVERY FAMILY CARRIES ITS FALLBACK. These were bare -- `'500 31px
+     "Montserrat"'` -- and a canvas font string naming one unavailable family
+     does NOT degrade the way a CSS stack does. There is no stack to fall
+     through, so it drops to the browser's default standard font, which is
+     Times. A missing webfont therefore did not come out as a sans, it came out
+     as a SERIF, on a card that has no serif anywhere in it.
+
+     Two of the four faces this card sets are at weights the page's own chrome
+     never uses -- Montserrat 500 and Space Mono 400 -- so they are the two most
+     likely not to be resident at the moment of a draw, and they are exactly the
+     two that showed up in Times.
+
+     Same three constants os.js keeps for the proof-of-visit card, for the same
+     reason, and wordmark.js keeps its own. */
+  var DISP = '"Bagel Fat One", cursive';
+  var MONO = '"Space Mono", monospace';
+  var BODY = '"Montserrat", sans-serif';
+
   var PALETTE = {
     purpleDark: '#5a3f8f',
     purpleMid: '#7d64b8',
@@ -696,8 +715,18 @@
     purpleAccent: '#8b6cc9',
     purpleAccent2: '#9a7fd1',
     pink: '#c45cae',
+    /* the same pink taken dark enough to be legal as text on the card's panel;
+       PALETTE.pink stays what it is for the plotted dot and the rarity badge,
+       which are marks rather than prose */
+    pinkInk: '#a84f95',
     pinkSoft: '#e07bb8',
-    lilac: '#b99df0'
+    lilac: '#b99df0',
+    /* the readout's two columns and its leader. See drawReadout for why the
+       label is the lightest purple on this hue that still clears 7:1 and why
+       the value had to go darker rather than the label lighter. */
+    readoutLabel: '#5a3f8f',
+    readoutValue: '#402d66',
+    readoutLeader: 'rgba(90,63,143,0.30)'
   };
 
   function wrapText(context, text, x, y, maxWidth, lineHeight, align) {
@@ -788,17 +817,44 @@
       var dh = ih * scale;
       context.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
     } else {
+      /* THE NO-PHOTO PLATE. This was a single ✦ set in Space Mono at 1.1x the
+         inner radius, and the problem with it was not that it looked bad -- it
+         was that it said nothing. A sparkle in the portrait slot is decoration
+         standing where an identity goes, and this is the slot's DEFAULT state:
+         most cards are drawn before anyone types a handle, so the sparkle was
+         what the majority of cards actually shipped with.
+
+         A bust says the one true thing about the visitor at this point, which
+         is that we do not know who they are yet. It is the same sentence the
+         line beside it now prints in words -- `anon is a ...` -- so the picture
+         and the caption agree instead of the picture being a mood.
+
+         Two circles and a gap. The gap is the neck and it has to stay: butted
+         together, head and shoulders merge into one lump with no edge between
+         them, which is the same failure test/marks.py calls NO WHITE TOUCHES
+         WHITE. Everything is a fraction of the inner radius so the drawing
+         scales with the slot rather than with a number typed once.
+
+         Paler field than the old one, too. It ran to #b48ee9, saturated enough
+         to compete with the name beside it; a plate with no photo on it should
+         recede. */
       var grad = context.createLinearGradient(cx - innerRadius, cy - innerRadius, cx + innerRadius, cy + innerRadius);
-      grad.addColorStop(0, '#fff8fc');
-      grad.addColorStop(0.5, '#f8bfe6');
-      grad.addColorStop(1, '#b48ee9');
+      grad.addColorStop(0, '#fdf7ff');
+      grad.addColorStop(0.55, '#f4e6fb');
+      grad.addColorStop(1, '#e6d5f7');
       context.fillStyle = grad;
       context.fillRect(cx - innerRadius, cy - innerRadius, innerRadius * 2, innerRadius * 2);
-      context.fillStyle = 'rgba(90,63,143,0.55)';
-      context.font = '700 ' + Math.round(innerRadius * 1.1) + 'px "Space Mono"';
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      context.fillText('✦', cx, cy + 2);
+
+      /* Not a text colour and not held to a text floor: it is a placeholder
+         mark, and at full strength it reads as a portrait of somebody rather
+         than as the absence of one. */
+      context.fillStyle = 'rgba(90,63,143,0.34)';
+      context.beginPath();
+      context.arc(cx, cy - innerRadius * 0.26, innerRadius * 0.28, 0, Math.PI * 2);
+      context.fill();
+      context.beginPath();
+      context.arc(cx, cy + innerRadius * 0.82, innerRadius * 0.58, 0, Math.PI * 2);
+      context.fill();
     }
     context.restore();
     context.beginPath();
@@ -837,7 +893,7 @@
   }
 
   function drawBadge(context, text, cx, y, align, accentColor) {
-    context.font = '700 19px "Space Mono"';
+    context.font = '700 19px ' + MONO;
     var w = context.measureText(text).width + 36;
     var h = 42;
     var boxX = align === 'right' ? cx - w : cx;
@@ -865,6 +921,25 @@
 
   function render() {
     if (!ctx || !currentResult) return;
+
+    /* ONE CALLER AWAITED THE FONTS AND FIVE DID NOT. ensureFonts() was awaited
+       in exactly one place -- the loading beat between the last question and
+       the reveal -- on the reasonable-sounding assumption that the reveal is
+       how anyone reaches a card. It is not. `view your last save` goes straight
+       here on purpose, skipping the beat because there is nothing to compute;
+       the pfp handlers redraw on their own when an avatar lands or is cleared.
+       Every one of those draws whatever is resident at that instant.
+
+       So the guarantee moves to the draw itself rather than living in one path
+       that happens to have it. Draw now with what is available, and draw again
+       when the rest arrives -- the same bargain font-display: swap already
+       makes for the DOM on this site, so the card behaves like the page around
+       it. fontsReady latches inside ensureFonts, so the second pass cannot
+       schedule a third. The error arm matters: document.fonts.load rejects on a
+       face that will never arrive, and without it the card would keep the
+       fallback AND leave an unhandled rejection behind it. */
+    if (!fontsReady) ensureFonts().then(render, function () { /* keep what drew */ });
+
     var result = currentResult;
 
     ctx.clearRect(0, 0, CARD_W, CARD_H);
@@ -897,11 +972,11 @@
 
     // Title
     ctx.fillStyle = PALETTE.purpleAccent;
-    ctx.font = '700 28px "Space Mono"';
+    ctx.font = '700 28px ' + MONO;
     ctx.textAlign = 'center';
     ctx.fillText('✦ THE ICYBEAR ALIGNMENT CHART ✦', CARD_W / 2, 118);
 
-    drawFadeLine(ctx, pad + 40, 142, CARD_W - pad - 40, 142);
+    drawFadeLine(ctx, pad + 40, 142, CARD_W - pad - 40);
 
     // Header: pfp + name, vertically centered against each other
     var pfpRadius = 60;
@@ -911,9 +986,9 @@
 
     var nameMaxWidth = CARD_W - (pfpCx + pfpRadius + 36) - pad - 20;
     var nameSize = fitTextToWidth(ctx, result.displayName, nameMaxWidth, 82, 42, function (s) {
-      return '400 ' + s + 'px "Bagel Fat One"';
+      return '400 ' + s + 'px ' + DISP;
     });
-    ctx.font = '400 ' + nameSize + 'px "Bagel Fat One"';
+    ctx.font = '400 ' + nameSize + 'px ' + DISP;
     // Solid deep color, not a pale gradient-clip — same fix as the intro
     // title: light pastel gradients on Bagel Fat One don't hold contrast
     // against this card's equally light background at body-copy sizes.
@@ -934,27 +1009,43 @@
     ctx.shadowColor = 'transparent';
     ctx.shadowOffsetY = 0;
 
-    if (pfpHandle) {
-      /* Pinned to the PFP, not to the name: its cap-top lines up with the top
-         of the circle, so the handle and the name read as one block hanging
-         off the portrait rather than a caption floating above it. Space Mono's
-         cap height is ~0.7em, so the baseline sits that far below the top. */
-      var HSIZE = 30;
-      var handleBaseline = (headerCenterY - pfpRadius) + HSIZE * 0.7;
-      ctx.font = '700 ' + HSIZE + 'px "Space Mono"';
-      ctx.fillStyle = PALETTE.pink;
-      ctx.textAlign = 'left';
-      ctx.fillText('@' + pfpHandle + ' is ' + article(result.displayName), nameX, handleBaseline);
-    }
+    /* ALWAYS DRAWN, WITH OR WITHOUT A HANDLE. This used to be conditional, and
+       that gave the header two different compositions: with a handle, a caption
+       and a name; without one, a name alone sitting next to an empty disc. The
+       second is the one most cards ship with -- the handle is optional and the
+       card renders long before anybody fills it in -- so the default state was
+       the worse-composed of the two, and the better one was reserved for people
+       who did extra work.
+
+       `anon` is a real answer to "who is this", not a placeholder for one, and
+       it makes the sentence complete either way: `anon is a soft doomer` reads
+       as a diagnosis of somebody. article() already picks a/an off the result,
+       so `anon is an unc gamer` comes out right too.
+
+       Pinned to the PFP, not to the name: its cap-top lines up with the top of
+       the circle, so the handle and the name read as one block hanging off the
+       portrait rather than a caption floating above it. Space Mono's cap height
+       is ~0.7em, so the baseline sits that far below the top. */
+    var HSIZE = 30;
+    var handleBaseline = (headerCenterY - pfpRadius) + HSIZE * 0.7;
+    ctx.font = '700 ' + HSIZE + 'px ' + MONO;
+    /* #c45cae measured 3.58:1 on the panel here -- under the 4.5 this site sets
+       for secondary text, never mind the 7 it sets for primary. It was survivable
+       while the line was opt-in; it is not now that every card carries it. Same
+       hue, same saturation, dropped in value until it cleared: 4.66:1. */
+    ctx.fillStyle = PALETTE.pinkInk;
+    ctx.textAlign = 'left';
+    ctx.fillText((pfpHandle ? '@' + pfpHandle : 'anon') + ' is ' + article(result.displayName),
+                 nameX, handleBaseline);
 
     // Diagnosis line
     ctx.fillStyle = PALETTE.purpleText;
-    ctx.font = '500 31px "Montserrat"';
+    ctx.font = '500 31px ' + BODY;
     ctx.textAlign = 'left';
     var diagY = headerCenterY + pfpRadius + 32;
     var diagHeight = wrapText(ctx, result.diagnosisLine, pad + 40, diagY, CARD_W - pad * 2 - 80, 42, 'left');
 
-    drawFadeLine(ctx, pad + 40, diagY + diagHeight - 6, CARD_W - pad - 40, diagY + diagHeight - 6);
+    drawFadeLine(ctx, pad + 40, diagY + diagHeight - 6, CARD_W - pad - 40);
 
     // Compass — sized dynamically to actually fill the space available
     // between the header and a reserved bottom block (tags + footer +
@@ -968,12 +1059,16 @@
     // other, which is what caused the stray-looking line before.
     var compassY = diagY + diagHeight + 64;
 
-    var tagRowHeight = 22 + 26;
-    var tagGap = 14;
-    // Always two tags now — hydration always has something to say (low/mid/
-    // high), it's no longer a conditional-presence flag.
-    var tagsList = [result.hydrationText, result.auraText];
-    var tagsBlockHeight = tagsList.length * tagRowHeight + (tagsList.length - 1) * tagGap;
+    /* Two rows, always. Hydration always has something to say (low/mid/high),
+       so this is not a conditional-presence flag -- but the block height is
+       still computed from the list rather than typed as a constant, because the
+       compass sizes itself against it and a wrong constant here is a compass
+       that grows into the footer. */
+    var READOUT_ROW_H = 44;
+    var READOUT_ROW_GAP = 16;
+    var readoutRows = [splitReadout(result.hydrationText), splitReadout(result.auraText)];
+    var tagsBlockHeight = readoutRows.length * READOUT_ROW_H +
+                          (readoutRows.length - 1) * READOUT_ROW_GAP;
 
     var GAP_COMPASS_TO_TAGS = 70;
     /* The wordmark is pinned to the CARD, not stacked after the tags. Driving
@@ -994,11 +1089,12 @@
     var dotPos = drawCompass(ctx, compassX, compassY, compassSize, result);
     positionDotGlow(dotPos.dotX, dotPos.dotY);
 
-    // Garnish tags — stacked vertically, height varies by how many are
-    // showing; footer is positioned off the actual returned height, not a
-    // fixed guess, so it can never collide with either case.
+    // The readout — full-width rows in the same text column as the two fade
+    // rules above, so the card has one measure down its whole length instead
+    // of a centred block floating inside a wider one. Footer is positioned off
+    // the returned height, not a fixed guess.
     var tagsTopY = compassY + compassSize + GAP_COMPASS_TO_TAGS;
-    var tagsHeight = drawTags(ctx, tagsTopY, CARD_W / 2, CARD_W - pad * 2 - 80, tagsList);
+    drawReadout(ctx, tagsTopY, pad + 40, CARD_W - pad * 2 - 80, readoutRows);
 
     // Footer branding — hard requirement: bake URL + brand mark into pixels.
     drawFooter(ctx, FOOTER_BASE);
@@ -1028,17 +1124,30 @@
     dotGlowEl.classList.add('is-ready');
   }
 
-  // Fading horizontal divider — canvas echo of the site's
-  // .section-heading__line (a rule that fades to transparent).
-  function drawFadeLine(context, x1, y, x2, y2) {
+  /* Fading horizontal divider. It started as a canvas echo of the site's
+     .section-heading__line, which is a one-way fade -- `linear-gradient(90deg,
+     rgba(255,255,255,0.9), transparent)` -- because in the DOM that rule always
+     trails off to the RIGHT of a left-set heading. It is doing a different job
+     here and the borrowed direction was wrong for it.
+
+     Both rules on this card span the full text column. The upper one sits under
+     a CENTRED title, so a left-to-right fade made it look mispainted -- solid on
+     one side, gone on the other, under symmetric type. The lower one is not an
+     underline at all: it separates the left-aligned diagnosis block from the
+     centred compass below it, and a divider between two blocks has no reason to
+     prefer an end.
+
+     So it fades from both ends into the middle. Strongest where the eye is. */
+  function drawFadeLine(context, x1, y, x2) {
     var grad = context.createLinearGradient(x1, 0, x2, 0);
-    grad.addColorStop(0, 'rgba(154,127,209,0.55)');
+    grad.addColorStop(0, 'rgba(154,127,209,0)');
+    grad.addColorStop(0.5, 'rgba(154,127,209,0.55)');
     grad.addColorStop(1, 'rgba(154,127,209,0)');
     context.strokeStyle = grad;
     context.lineWidth = 1.5;
     context.beginPath();
     context.moveTo(x1, y);
-    context.lineTo(x2, y2 === undefined ? y : y2);
+    context.lineTo(x2, y);
     context.stroke();
   }
 
@@ -1145,7 +1254,7 @@
     context.stroke();
 
     // Pole labels
-    context.font = '700 24px "Space Mono"';
+    context.font = '700 24px ' + MONO;
     context.fillStyle = PALETTE.purpleDark;
     context.textAlign = 'center';
     context.fillText('INTERNET ANGEL', cx, y - 20);
@@ -1224,38 +1333,111 @@
   // ever having to cram two chips into the card's width at once. Returns
   // the total height used so the caller can position whatever comes next
   // (the footer) off the real result instead of a guessed constant.
-  function drawTags(context, topY, centerX, maxWidth, tagsList) {
-    var chipGap = 14;
-    var padX = 26;
-    var baseSize = 22;
-    var chipHeight = baseSize + 26;
+  /* Space Mono, letter-spaced, drawn from a left edge. os.js has a tracked()
+     of its own but it centres on a point, which is the wrong anchor for a
+     label in a two-column row. Same reason it exists there: ctx.letterSpacing
+     is too new to rely on for a card that has to render identically in every
+     browser that might open it. Returns the width it drew. */
+  function trackedLeft(context, text, x, y, spacing) {
+    var chars = text.split('');
+    var cx = x;
+    for (var i = 0; i < chars.length; i++) {
+      context.fillText(chars[i], cx, y);
+      cx += context.measureText(chars[i]).width + spacing;
+    }
+    return (cx - spacing) - x;
+  }
 
-    tagsList.forEach(function (t, i) {
-      var size = baseSize;
-      context.font = '700 ' + size + 'px "Space Mono"';
-      var w = context.measureText(t).width + padX * 2;
-      while (w > maxWidth && size > 15) {
-        size -= 1;
-        context.font = '700 ' + size + 'px "Space Mono"';
-        w = context.measureText(t).width + padX * 2;
-      }
-      var chipY = topY + i * (chipHeight + chipGap);
-      var chipX = centerX - w / 2;
-      context.fillStyle = 'rgba(255,255,255,0.8)';
-      roundRect(context, chipX, chipY, w, chipHeight, chipHeight / 2);
-      context.fill();
-      context.strokeStyle = '#ffffff';
-      context.lineWidth = 1.5;
-      roundRect(context, chipX, chipY, w, chipHeight, chipHeight / 2);
-      context.stroke();
-      context.fillStyle = PALETTE.purpleMid;
-      context.textAlign = 'center';
+  /* ---- the readout ----
+     These two lines were chips: a rounded white pill per line, centred, stacked.
+     Two things were wrong with that and only one of them was cosmetic.
+
+     THE COSMETIC ONE. A chip is for a short token -- `godparent`, `unc gamer`,
+     the kind of thing the proof-of-visit card puts in one. These are sentences:
+     `hydrated. i'm proud of you. keep it up.` is thirty-nine characters, and a
+     thirty-nine-character pill sitting above a nineteen-character pill, both
+     centred, is two ragged shapes pretending to be a set. Full-width rows make
+     the length difference stop mattering, because both rows end at the same x
+     no matter what is in them.
+
+     THE ONE THAT MATTERED. The chip ink was PALETTE.purpleMid on an 80%-white
+     pill: 4.65:1, and 4.14:1 where the pill thinned over the panel. This site
+     sets its own floors -- 7:1 primary, 4.5:1 secondary, written down in
+     test/contrast.py -- and that was under both readings. It is a results
+     sheet now and both columns clear 7:1, measured against the panel gradient
+     at the y they actually land on:
+
+       label  #5a3f8f   7.15:1     value  #402d66  10.18:1
+
+     #5a3f8f is not a taste decision. Walking this hue lighter, it is the LAST
+     step that still reaches 7:1 -- #5d4194, one notch up, is 6.86:1. So the
+     emphasis between the two columns could not be made by lifting the label off
+     the value; it had to be made by pushing the value below the label. Which is
+     the better result anyway: the value gets heavier rather than the label
+     getting washed out.
+
+     The leader dots are held to nothing, because a leader is a rule and carries
+     no information -- it exists to walk the eye from a label to a number. */
+  function drawReadout(context, topY, x, maxWidth, rows) {
+    var ROW_H = 44, ROW_GAP = 16;
+    var LABEL_SIZE = 20, LABEL_TRACK = 3;
+    var VALUE_BASE = 26, VALUE_MIN = 19;
+    var LEADER_PAD = 14;          /* air on each side of the dotted run */
+
+    rows.forEach(function (row, i) {
+      var label = row[0], value = row[1];
+      var midY = topY + i * (ROW_H + ROW_GAP) + ROW_H / 2;
+
+      context.textAlign = 'left';
       context.textBaseline = 'middle';
-      context.fillText(t, chipX + w / 2, chipY + chipHeight / 2 + 1);
+
+      context.font = '700 ' + LABEL_SIZE + 'px ' + MONO;
+      context.fillStyle = PALETTE.readoutLabel;
+      var labelW = trackedLeft(context, label, x, midY, LABEL_TRACK);
+
+      /* The value is fitted, not assumed. The longest hydration string is 44
+         characters and the column is 944 wide; it fits at 26, but the fit loop
+         is what stops a future line from silently printing through the label. */
+      var size = VALUE_BASE;
+      context.font = '400 ' + size + 'px ' + MONO;
+      var room = maxWidth - labelW - LEADER_PAD * 2 - 24;
+      while (context.measureText(value).width > room && size > VALUE_MIN) {
+        size -= 1;
+        context.font = '400 ' + size + 'px ' + MONO;
+      }
+      var valueW = context.measureText(value).width;
+      var valueX = x + maxWidth - valueW;
+
+      context.fillStyle = PALETTE.readoutValue;
+      context.fillText(value, valueX, midY);
+
+      /* dots on a fixed 9px pitch, not stretched to fill: a leader is a rule
+         with a rhythm, and rescaling the gap per row would make two rows of the
+         same object look like two different objects */
+      var dotFrom = x + labelW + LEADER_PAD;
+      var dotTo = valueX - LEADER_PAD;
+      context.fillStyle = PALETTE.readoutLeader;
+      for (var dx = dotFrom; dx < dotTo; dx += 9) {
+        context.beginPath();
+        context.arc(dx, midY + 1, 1.4, 0, Math.PI * 2);
+        context.fill();
+      }
+
       context.textBaseline = 'alphabetic';
     });
 
-    return tagsList.length * chipHeight + (tagsList.length - 1) * chipGap;
+    return rows.length * ROW_H + (rows.length - 1) * ROW_GAP;
+  }
+
+  /* `hydration: not bad. also not good. reflect.` arrives as one string with
+     its own label already on the front, which is exactly the two columns this
+     row needs -- so the split is free and the copy sheet stays the one place
+     the words live. Defensive on the colon: a line without one becomes a value
+     with no label rather than an empty row. */
+  function splitReadout(text) {
+    var cut = String(text).indexOf(': ');
+    if (cut < 0) return ['', String(text)];
+    return [String(text).slice(0, cut).toUpperCase(), String(text).slice(cut + 2)];
   }
 
   /* The same footer the proof-of-visit card draws: the logo ARTWORK tinted
@@ -1606,8 +1788,59 @@
   }
   if (pfpClearBtn) pfpClearBtn.addEventListener('click', clearPfp);
 
+  /* ---- the card is held, not displayed ----------------------------------
+     Ported from os.js rather than reinvented, because the proof-of-visit card
+     and this one are the same object in the hand and were not behaving like it:
+     that card tilted to the pointer and this one sat flat, while both wore the
+     same foil and the same glare. The frame here already mirrored #capcard in
+     every other respect -- the holo layers, the mask, the radius, the overflow
+     clip -- so this was the one piece missing.
+
+     NOTHING HERE TOUCHES THE CANVAS. The tilt, the foil and the glare are DOM
+     layers over the top; the exported PNG stays the flat card. os.js puts it
+     better: the foil is the moment, the flat card is the artefact.
+
+     --glare-a is set from the same handler as the rotation, so the specular
+     tracks the pointer instead of switching on at :hover -- which is also why
+     the old :hover rule had to come out of the stylesheet. */
+  var MAX_TILT = 11;
+
+  function tiltClamp(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  function tiltFrom(e) {
+    if (prefersReducedMotion || !canvasFrame) return;
+    var r = canvasFrame.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    var px = tiltClamp((e.clientX - r.left) / r.width);
+    var py = tiltClamp((e.clientY - r.top) / r.height);
+    canvasFrame.setAttribute('data-live', '');
+    canvasFrame.style.setProperty('--tilt-y', ((px - 0.5) * 2 * MAX_TILT).toFixed(2) + 'deg');
+    canvasFrame.style.setProperty('--tilt-x', ((0.5 - py) * 2 * MAX_TILT).toFixed(2) + 'deg');
+    canvasFrame.style.setProperty('--glare-x', (px * 100).toFixed(1) + '%');
+    canvasFrame.style.setProperty('--glare-y', (py * 100).toFixed(1) + '%');
+    canvasFrame.style.setProperty('--glare-a', '1');
+  }
+
+  function restCard() {
+    if (!canvasFrame) return;
+    canvasFrame.removeAttribute('data-live');   /* hand it back to the easing */
+    canvasFrame.style.setProperty('--tilt-x', '0deg');
+    canvasFrame.style.setProperty('--tilt-y', '0deg');
+    canvasFrame.style.setProperty('--glare-a', '0');
+  }
+
+  if (canvasFrame) {
+    canvasFrame.addEventListener('pointermove', tiltFrom);
+    canvasFrame.addEventListener('pointerleave', restCard);
+    canvasFrame.addEventListener('pointercancel', restCard);
+  }
+
   window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', function (e) {
     prefersReducedMotion = e.matches;
+    /* a card left mid-tilt when the preference flips would stay tilted: the
+       stylesheet's !important kills the transform, but the inline custom
+       properties it was using would sit there for the next time it is off */
+    if (prefersReducedMotion) restCard();
   });
 
   // ---------------------------------------------------------------------

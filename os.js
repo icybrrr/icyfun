@@ -35,6 +35,9 @@
      brand incident, so every version bump ships its migration.
      ========================================================================== */
 
+  /* sfx.js hardcodes `icybear.v1.sound` and owns the mute preference on its
+     own. Bumping this number means bumping that string in the same commit,
+     or the two files disagree about whether the site is muted. */
   var VERSION = 1;
   var NS = 'icybear.v' + VERSION + '.';
   /* Every key that must survive a VERSION bump. `saveKey` was missing, which is
@@ -260,7 +263,12 @@
      ========================================================================== */
 
   function onPhone() {
-    return body.hasAttribute('data-preview') || window.matchMedia('(max-width: 700px)').matches;
+    /* Height as well as width. A landscape phone is ~850x390: wider than 700,
+       and not portrait, so it fell between the phone shell and the tablet
+       composition and got the full desktop in 390px of height. Kept in step
+       with the same pair of conditions in os.css. */
+    return body.hasAttribute('data-preview') ||
+      window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
   }
 
   /* THE THIRD SHAPE. Not a third shell -- a portrait tablet gets the desktop,
@@ -390,14 +398,10 @@
 
   el('toast').addEventListener('click', function () {
     var fn = toastAction;
-    if (!fn) return;
     toastAction = null;
-    fn();
-  });
-
-  el('toast').addEventListener('click', function () {
     dismiss(el('toast'), toastTimer);
     if (toastQueue.length) setTimeout(nextToast, 260);
+    if (fn) fn();
   });
   /* Same door as the desktop panel, on the shell that has no panel. The phone
      announces a badge as a notification carrying the patch itself, so tapping
@@ -412,7 +416,7 @@
 
   var ICON_NAMES = ['readme', 'quest', 'resume', 'diag', 'folio', 'stick', 'guest', 'quote',
                     'patch', 'v95', 'terminal', 'ach', 'specs', 'bags', 'sound-on', 'sound-off',
-                    'camera', 'phone', 'moon', 'flower'];
+                    'camera', 'moon', 'flower'];
 
   /* the phone gets the same queue as the desktop. It used to be a single slot,
      which mattered more than it looked: naming the bear fires a toast and then
@@ -563,7 +567,7 @@
      DEV_UNLOCK_THEMES, so closing the theme gate also deleted the only way to
      trigger the ceremony on demand -- one switch quietly doing two jobs. Both
      go before launch; they just go independently. */
-  var DEV_HOOKS = true;
+  var DEV_HOOKS = false;
   var badges = DEV_UNLOCK_THEMES ? Infinity : readList('ach').length;
 
   function themeById(id) {
@@ -778,17 +782,28 @@
     /* NOT renderWallGrid: the grid depends on the badge count, never on which
        theme is current, and rebuilding it here would throw away every preview
        that had lazily loaded and ask for them all again on the next open. */
+    /* THE CEREMONY IS THE SWITCH, and it replays. A moment you get once is a
+       moment you cannot show anyone: you do not know it is coming, so you do
+       not have anything recording, and there is no second chance. Putting
+       archangel on is a deliberate act with a deliberate result. */
     if (id === 'archangel') { ceremony(); return; }
     toast(fmt(S.themes.applied, { name: S.themes[id] }), 'flower');
     sfx('theme');
   }
 
   /* ==========================================================================
-     THE CEREMONY — the thirteenth arrives once, and it should feel like it.
+     THE CEREMONY — the thirteenth arrives, and it should feel like it.
 
-     Fires on switching to archangel while we are still designing the theme.
-     Before launch this moves to the unlock itself: call ceremony() from
-     unlock('all') and drop the call in setTheme (icybearos-spec.md, section 9).
+     IT FIRES FROM setTheme('archangel') AND NOWHERE ELSE. It used to also fire
+     from the 13/13 unlock, which meant it played twice within a minute -- once
+     unbidden, once when the visitor went and put the theme on -- and, because
+     the unlock can be settled by stored state at module-eval time, the first of
+     those could land underneath the boot screen. The unlock announces the theme
+     and points at the menu; the menu plays the ceremony. One cause, one effect.
+
+     REPLAYABLE ON PURPOSE. A once-ever cutscene is one nobody can screenshot:
+     it arrives unannounced, and there is no second take. Switching away and
+     back is a deliberate act, so the reveal answers it every time.
      ========================================================================== */
 
   var ceremonyTimer = null;
@@ -1795,11 +1810,6 @@
      the list, so this field cannot carry arbitrary text at all. */
   var stampIndex = 0;
   var stamped = false;
-
-  /* ==========================================================================
-     REQUEST QUOTE — copies a brief and opens the dms. Email is the fallback
-     because email is the serious-money path.
-     ========================================================================== */
 
   all('.pills.pick').forEach(function (group) {
     /* #folio-filter carries `pills pick` for the styling, but info.js owns its
@@ -2829,8 +2839,13 @@
     if (Math.random() < 0.5) bearSay(pick(S.bear.dance));
   }, 21000);
 
-  /* ---- idle chatter ---- */
+  /* ---- idle chatter ----
+     Quiet while a window is open. Between them the two idle timers fire about
+     three times a minute, which is atmosphere on an empty desktop and an
+     interruption beside something somebody is reading. A character who waits
+     until you look up is also the better character. */
   ambient(function () {
+    if (stack.length) return;
     if (bearIsFree() && Math.random() < 0.4) bearSay(pick(S.bear.idle), true);
   }, 15000);
 
@@ -2893,6 +2908,10 @@
   function hydrationCheck(force) {
     if (asked && !force) return;
     if (!force && (onPhone() || document.hidden)) return;
+    /* Seven minutes in is roughly when somebody is reading the resume. Wait
+       for a gap and ask then; it is charming on an idle desktop and an
+       interruption mid-paragraph. */
+    if (!force && stack.length) { setTimeout(hydrationCheck, 90 * 1000); return; }
     asked = true;
     icyAsk(S.icy.water.ask, [
       [S.icy.water.yes, function () { icySay(S.icy.water.confirmed); }],
@@ -3004,8 +3023,12 @@
     var input = el('bear-name-input');
     input.value = rename ? (bearName || '') : '';
     box.hidden = false;
-    input.focus();
-    input.select();
+    /* The bubble is an invitation, not a prompt. It used to take the caret
+       about seven seconds after landing, with no click from the visitor: on a
+       phone that raises the keyboard over whatever they were reading, and on a
+       desktop it pulls focus out from under anyone tabbing. Renaming is the
+       one case where they asked, so that one still focuses. */
+    if (rename) { input.focus(); input.select(); }
   }
 
   function askName() {
@@ -3173,10 +3196,13 @@
     /* The panel names a badge at the exact moment you most want to see the rest
        of them, and it used to be six seconds of glass you could not touch. It
        is a door now: clicking it opens badges.sav and takes the panel down.
-       Only the badge variant. The theme panel is announcing a sky, and sending
-       that to a cabinet of patches answers a question nobody asked. */
-    p.toggleAttribute('data-open', !theme);
-    p.title = theme ? '' : S.app.achOpen;
+       The theme panel is a door too, but to a different room. Sending it to a
+       cabinet of patches would answer a question nobody asked; sending it to
+       the theme menu answers the only question it raises, which is "so where do
+       I put this on". That matters most for archangel, where what is behind the
+       swatch is the ceremony. */
+    p.toggleAttribute('data-open', true);
+    p.title = theme ? S.app.themeOpen : S.app.achOpen;
     p.toggleAttribute('data-theme-pop', theme);
     if (theme) p.querySelector('.achpop__sky').dataset.motif = opts.theme;
     p.querySelector('.achpop__art').hidden = theme;
@@ -3219,10 +3245,62 @@
   }
 
   el('achpop').addEventListener('click', function () {
-    if (!el('achpop').hasAttribute('data-open')) return;
+    var p = el('achpop');
+    if (!p.hasAttribute('data-open')) return;
+    var theme = p.hasAttribute('data-theme-pop');
+    var which = theme ? p.querySelector('.achpop__sky').dataset.motif : '';
     closeAchPop();
-    openWin('ach');
+    if (theme) openThemeMenu(which); else openWin('ach');
   });
+
+  /* Drops the view menu open with the theme list showing. Used by the theme
+     panel and by icy's 13/13 line, so neither has to say "view, then theme"
+     in words. Silent on the phone, which has the list in its own sheet and no
+     menu bar to drop. */
+  function openThemeMenu(highlight) {
+    var drop = el('m-view');
+    var btn = document.querySelector('[data-menu="m-view"]');
+    if (!drop || !btn || onPhone()) return;
+    closeMenus();
+    drop.setAttribute('data-open', '');
+    btn.setAttribute('aria-expanded', 'true');
+    sfx('menu');
+    if (!highlight) return;
+    var sw = drop.querySelector('[data-wall-set="' + highlight + '"]');
+    if (!sw) return;
+    sw.setAttribute('data-nudge', '');
+    setTimeout(function () { sw.removeAttribute('data-nudge'); }, 3400);
+  }
+
+  /* ==========================================================================
+     AFTER BOOT — nothing announces itself over the loading screen.
+
+     earn() runs at module time for every badge that is settled by stored state
+     rather than by a click: `reg` from the visit count, `cert` from a diagnosis
+     brought back from /chart/, and the two survey badges checkSurveys closes
+     out on the first tick. Those fired their panels — and, when one of them was
+     the thirteenth, the whole ceremony — while #boot was still covering the
+     screen, so the moment played out behind the loading bar and was over before
+     the desktop existed. Anything visitor-facing that can be reached during
+     boot goes through here and waits for a desktop to land on.
+     ========================================================================== */
+
+  var booted = false;
+  var bootQueue = [];
+
+  function afterBoot(fn) {
+    if (booted) { fn(); return; }
+    bootQueue.push(fn);
+  }
+
+  function flushBootQueue() {
+    booted = true;
+    /* spliced first: a queued item that queues another one must not append to
+       the list we are in the middle of walking */
+    bootQueue.splice(0).forEach(function (fn) {
+      try { fn(); } catch (e) { try { console.warn(e); } catch (e2) {} }
+    });
+  }
 
   /* replaces the placeholder recorder the earlier milestones wrote against */
   var earn = function (id) {
@@ -3230,15 +3308,6 @@
     got[id] = true;
     write('ach', Object.keys(got));
     var def = DEFS.filter(function (d) { return d[0] === id; })[0];
-    if (def) {
-      /* The phone's notification already carries the patch and belongs inside
-         the bezel; a fixed popup would float outside the phone entirely. So the
-         phone keeps its notification and the desktop gets the panel, and both
-         get the fanfare. */
-      if (onPhone()) { toast(fmt(S.ach.unlocked, { name: def[1] }), 'badge:' + id); sfx('achieve'); }
-      else achPop({ badge: id, eyebrow: S.app.achPop, name: def[1],
-                    meta: fmt(S.app.achScore, { n: gotCount(), t: DEFS.length }) });
-    }
     renderAch();
     var wasOpen = badges;
     badges = DEV_UNLOCK_THEMES ? Infinity : gotCount();
@@ -3248,28 +3317,54 @@
        all, and crossing a rung changed a swatch in a menu nobody had open. It
        is announced now, after the badge that caused it, on the same panel --
        queued behind it rather than racing it. */
-    THEMES.forEach(function (t) {
-      if (t.unlock && wasOpen < t.unlock && badges >= t.unlock) {
+    /* Worked out HERE and announced later: after the flush `badges` and
+       `wasOpen` have both moved on, so the rung that was crossed has to be
+       recorded at the moment it is crossed. */
+    var opened = THEMES.filter(function (t) {
+      return t.unlock && wasOpen < t.unlock && badges >= t.unlock;
+    });
+    var complete = id !== 'all' && gotCount() >= DEFS.length && !got.all;
+    var third = gotCount() === 3;
+    var score = fmt(S.app.achScore, { n: gotCount(), t: DEFS.length });
+    try { mintSaveIfEarned(); } catch (e) { /* never block an achievement */ }
+
+    /* THE STATE IS ALREADY WRITTEN. Only the noise waits for a desktop. */
+    afterBoot(function () {
+      if (def) {
+        /* The phone's notification already carries the patch and belongs inside
+           the bezel; a fixed popup would float outside the phone entirely. So the
+           phone keeps its notification and the desktop gets the panel, and both
+           get the fanfare. */
+        if (onPhone()) { toast(fmt(S.ach.unlocked, { name: def[1] }), 'badge:' + id); sfx('achieve'); }
+        else achPop({ badge: id, eyebrow: S.app.achPop, name: def[1], meta: score });
+      }
+      opened.forEach(function (t) {
         var pop = { theme: t.id, eyebrow: S.app.themePop, name: S.themes[t.id],
                     meta: t.unlock >= 13 ? S.themes.final : '' };
         if (onPhone()) toast(fmt(S.themes.opened, { name: S.themes[t.id] }), 'theme');
         else achPop(pop);
-      }
-    });
-    /* three is the point where a visitor has clearly decided to play */
-    if (gotCount() === 3) setTimeout(function () { nudgeCapture('badge'); }, 2600);
-    try { mintSaveIfEarned(); } catch (e) { /* never block an achievement */ }
+      });
+      /* three is the point where a visitor has clearly decided to play */
+      if (third) setTimeout(function () { nudgeCapture('badge'); }, 2600);
 
-    if (id !== 'all' && gotCount() >= DEFS.length && !got.all) {
+      if (!complete) return;
       setTimeout(function () {
         got.all = true;
         write('ach', Object.keys(got));
         body.classList.add('angel');
         renderAch();
         toast(S.ach.complete, 'ach');
-        ceremony();                    /* the thirteenth arrives */
+        /* NO CEREMONY HERE. The archangel theme panel is already queued behind
+           the thirteenth badge, and it is a door: it opens the theme menu with
+           the swatch lit. Icy says the same thing out loud a beat later for
+           anyone who let the panel time out. The reveal is what happens when
+           they act on it, which is also what makes it repeatable. */
+        /* timed to land with the archangel panel rather than under the badge
+           panel it is queued behind: 6.4s of badge, 0.46s of fade, less the
+           1.8s this block already waited. */
+        setTimeout(function () { icySay(S.themes.thirteenth); }, 5800);
       }, 1800);
-    }
+    });
   };
 
   function renderAch() {
@@ -3463,7 +3558,7 @@
   function hintWinnableNow(id) {
     var m = effMode();
     if (id === 'snowman') return m === 'snow';
-    if (id === 'gn') return icyAwake ? !icyAwake() : m === 'night';
+    if (id === 'gn') return !icyAwake();
     if (id === 'seasons') return true;
     return true;
   }
@@ -3574,6 +3669,9 @@
   var CHIP_H = 54, CHIP_GAP = 20;   /* the chips were touching each other */
   var MONO = '"Space Mono", monospace';
   var DISP = '"Bagel Fat One", cursive';
+  /* The card's date is struck, not localised. See the receipt block below. */
+  var MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+                'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
   function cssVar(name) {
     return getComputedStyle(body).getPropertyValue(name).trim();
@@ -4430,7 +4528,7 @@
     /* Every text slot is fitted to this, so nothing can reach the frame. */
     var INNER = W - 200;
     var serial = cardSerial();
-    var tier = serialTier(serial.no);
+    var tier = serialTier(serial.no, serial.local);
 
     /* ---- the hallmark ----
        A HALLMARK IS STRUCK INTO A CORNER, and a corner is defined by two edges.
@@ -4654,9 +4752,24 @@
         halo(c, dark, function () { c.fillText(asp, CX, y + 23); });
       } },
       { h: 26, gap: 34, grow: 1.4, draw: function (y) { /* the receipt */
+        /* DD MMM YYYY, struck by hand. toLocaleDateString followed the
+           visitor's locale, so the same press produced AUG 26, 2026 on one
+           machine and 26. AUG. 2026 on another -- two different cards from
+           the same event. A hallmark is
+           the same everywhere or it is not a hallmark. This form also drops
+           the comma and the period, which the tracked mono line prefers.
+
+           The visit number used to sit here as `26 AUG 2026 · VISIT 3`, and it
+           was cut. The count is a localStorage fact about a browser, not about
+           a person: a phone and a laptop are two strangers to it, incognito
+           resets every time, and clearing site data sends a regular back to
+           VISIT 1. It could only ever undercount. It also said the least of
+           anything on the card, next to a serial, a tier and a theme. The
+           count still runs for the `reg` badge and for whoami, it just does
+           not get printed. */
         var d = new Date();
-        var rec = d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
-          .toUpperCase() + ' · ' + fmt(S.cap.visit, { n: visits.count }).toUpperCase();
+        var rec = (d.getDate() < 10 ? '0' : '') + d.getDate() + ' '
+          + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
         /* the eyebrow gave its line to the stamp, so the number moves here */
         if (serial.misprint) rec += ' · No. ' + serial.no;
         c.font = monoF(fitTracked(c, rec, INNER, CAP.stamp, 14, monoF, 3));
@@ -5026,6 +5139,8 @@
      across all four -- a second one is nagging. Nothing opens by itself; the
      toast says what happened and the dock camera rings for four seconds. */
   function nudgeCapture(reason) {
+    /* it points at the dock, so there has to be a dock to point at */
+    if (!booted) { afterBoot(function () { nudgeCapture(reason); }); return; }
     if (onPhone()) return;             /* the phone dock has no camera tooltip */
     try {
       if (sessionStorage.getItem(NS + 'nudged') === '1') return;
@@ -5066,8 +5181,8 @@
   var MISPRINT_ODDS = 40;
 
   /* ---- WHICH NUMBERS ARE WORTH SOMETHING ---------------------------------
-     Two reserved, and everything else is luck. 0001 and 8888 are pre-inserted
-     rows in the table, so the draw can never return them and they are handed
+     Three reserved, and everything else is luck. 0001, 8888 and 0621 are
+     pre-inserted rows in the table, so the draw can never return them and they are handed
      out by claim code instead -- which is also what keeps the proprietor out of
      the queue for 0001.
 
@@ -5113,8 +5228,11 @@
      so the two cannot drift. */
   var TIER_WORD = ['standard', 'special', 'one'];
 
-  /* 0 ordinary, 1 rare, 2 one-of-one. Reads the digits off either run code. */
-  function serialTier(no) {
+  /* 0 ordinary, 1 rare, 2 one-of-one. Reads the digits off either run code.
+     A locally minted serial is always 0: the draw that produced it had no
+     table behind it, so nothing about it is scarce. */
+  function serialTier(no, local) {
+    if (local) return 0;
     var cut = String(no || '').indexOf('-');
     var digits = cut < 0 ? '' : String(no).slice(cut + 1);
     if (SUPER[digits]) return 2;
@@ -5138,15 +5256,29 @@
     return (v && typeof v === 'object' && typeof v.no === 'string') ? v : null;
   }
 
-  /* The offline path, and the only place a number is invented locally. */
+  /* The offline path, and the only place a number is invented locally.
+
+     IT MUST NOT BE ABLE TO DEAL A RESERVED NUMBER. The server draw cannot
+     return 0001, 8888 or 0621 because those rows already exist, so `insert`
+     can never allocate them. This draw has no table to check against, so it
+     excludes them itself -- otherwise anyone whose fetch failed, or whose
+     connection took longer than the 2.5s bail, could mint themselves the one
+     number the claim codes exist to hand out.
+
+     `local` is recorded for the same reason. A number nobody else can be
+     stopped from drawing is not a one-of-one, so serialTier() refuses to
+     promote it past `standard`. The card still works on a plane; it just
+     does not claim to be rare. */
   function mintLocal() {
     var miss = rand4() % MISPRINT_ODDS === 0;
+    var n = pad4(rand4());
+    while (SUPER[n]) n = pad4(rand4());
     /* THE PREFIX IS A SERIES, NOT A COUNT. It used to be 888, and a number in
        front of a number reads as a quantity: 888-0417 invites "417 of 888",
        which is exactly the census the serial exists to avoid. Letters cannot be
        mistaken for a total. ICYB is the standard run, MP the misprint run,
        numbered separately the way a real reject sheet is. */
-    var v = { no: (miss ? 'MP-' : 'ICYB-') + pad4(rand4()), misprint: miss };
+    var v = { no: (miss ? 'MP-' : 'ICYB-') + n, misprint: miss, local: true };
     write('serial', v);
     return v;
   }
@@ -5285,6 +5417,13 @@
       d.removeAttribute('data-open');
       document.querySelector('[data-menu="' + d.id + '"]').setAttribute('aria-expanded', 'false');
     });
+  }
+
+  /* "you have not earned one yet" and "we tried and could not" are different
+     sentences, and only one of them is ever true at a time. */
+  function pkeyWhyNone() {
+    if (saveFault) return S.app.guestErr[saveFault] || S.app.pkeyOffline;
+    return gotCount() >= 3 ? S.app.pkeyOffline : S.app.pkeyNone;
   }
 
   var ACTIONS = {
@@ -5450,6 +5589,10 @@
        screenshot -- drawCapture paints from data and cannot leak it -- it is
        that icy screen-shares and streams. The danger is while you are
        deliberately looking at it, which auto-dismiss does nothing about. */
+    /* WHY THERE IS NO KEY. Three of the four buttons below used to answer
+       "earn a few badges first" whatever the reason, so a visitor holding nine
+       badges whose mint had failed was told to go and earn badges. The panel
+       itself already distinguished the two; this is that answer, shared. */
     'product-key': function () {
       var k = read('saveKey', null);
       pkeyMode = 'view';
@@ -5458,11 +5601,7 @@
       /* Distinguish "you have not earned one" from "we tried and could not".
          Saying "earn a few badges first" to someone holding nine badges is
          simply wrong, and it hides a real failure. */
-      if (!k) {
-        slot('pkey-say').textContent = saveFault
-          ? (S.app.guestErr[saveFault] || S.app.pkeyOffline)
-          : (gotCount() >= 3 ? S.app.pkeyOffline : S.app.pkeyNone);
-      }
+      if (!k) slot('pkey-say').textContent = pkeyWhyNone();
       el('pkey').setAttribute('data-open', '');
       el('pkey').setAttribute('aria-hidden', 'false');
       sfx('open');
@@ -5470,7 +5609,7 @@
 
     'pkey-copy': function () {
       var k = read('saveKey', null);
-      if (!k) { slot('pkey-say').textContent = S.app.pkeyNone; return; }
+      if (!k) { slot('pkey-say').textContent = pkeyWhyNone(); return; }
       var done = function (msg) { slot('pkey-say').textContent = msg; };
       if (navigator.clipboard) {
         navigator.clipboard.writeText(prettyKey(k)).then(
@@ -5481,7 +5620,7 @@
 
     'pkey-save': function () {
       var k = read('saveKey', null);
-      if (!k) { slot('pkey-say').textContent = S.app.pkeyNone; return; }
+      if (!k) { slot('pkey-say').textContent = pkeyWhyNone(); return; }
       /* a file beats "write it down": localStorage is what Safari deletes */
       var body = 'icybearOS product key\n\n' + prettyKey(k) +
                  '\n\n' + S.app.pkeyNote + '\n';
@@ -5502,7 +5641,7 @@
 
     'pkey-rotate': function () {
       var k = read('saveKey', null);
-      if (!k) { slot('pkey-say').textContent = S.app.pkeyNone; return; }
+      if (!k) { slot('pkey-say').textContent = pkeyWhyNone(); return; }
       if (!window.confirm(S.app.pkeyRotateWarn)) return;
       var fresh = mintKey();
       slot('pkey-say').textContent = '…';
@@ -5589,16 +5728,10 @@
       if (!p.hidden) noteApp('specs');
     },
 
-    /* THE CONVERSION EVENT OF THE WHOLE SITE, and until now it recorded
-       nothing. It opened a Telegram tab and put the brief on the clipboard; if
-       the clipboard refused, the copy said "clipboard said no, tell me
-       yourself" and the brief the visitor had just written was gone. Somebody
-       without Telegram left no trace, and Icy never learned they existed.
-
-       It posts to the inbox now and prints a receipt. The old behaviour is the
-       FALLBACK rather than the feature: if the desk cannot be reached the brief
-       still goes to the clipboard and the dm still opens, so the worst case is
-       exactly what the best case used to be. A brief is never lost. */
+    /* The three buttons sound different, because they mean different things and
+     one buzzer for all three said they did not. retry is the machine refusing
+     again, so it gets the hard error. cope is the joke landing, so it gets
+     something soft and resolved rather than a rejection. */
     bags: function (btn) {
       var kind = btn ? btn.dataset.bags : '';
       var line = slot('bags-line');
@@ -5864,14 +5997,25 @@
       chime();
       openFromHash();
       setTimeout(askName, 3200);
+      /* everything earned before the desktop existed gets its moment now, in
+         front of it. The gap lets the welcome line land first. */
+      setTimeout(flushBootQueue, 1400);
     }, 500);
   }
 
   el('boot').addEventListener('click', endBoot);
   /* 3s was long enough to see the mark and not long enough to read the bar, so
      the load line finished off-screen and the whole beat read as a flash. A
-     click still skips it, which is what makes a longer hold safe. */
-  setTimeout(endBoot, 4200);
+     click still skips it, which is what makes a longer hold safe.
+
+     The full hold is for the FIRST visit. A returning visitor has already had
+     the beat and is being charged for it again, and under reduced motion the
+     bar fills instantly, so the wait is four seconds of a still image with no
+     visible reason for it. */
+  var BOOT_MS = 4200;
+  if (returning) BOOT_MS = 1400;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) BOOT_MS = 600;
+  setTimeout(endBoot, BOOT_MS);
 
   /* ---------- start ---------- */
   body.dataset.wall = themeById(read('wall', 'base')).id;
@@ -5975,6 +6119,7 @@
      check cannot be talked over before it has been answered */
   ambient(function () {
     if (el('icy-bubble').hasAttribute('data-ask')) return;
+    if (stack.length) return;                 /* not over an open window */
     if (Math.random() < 0.35) icySay(pick(S.icy.idle), true);
   }, 20000);
 

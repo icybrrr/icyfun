@@ -710,10 +710,16 @@ body[data-boot]::after {
   padding-top: 0;
 }
 
+/* #capstage's job, under a different name: the stage owns the perspective and
+   the card owns the rotation. Putting perspective on the card itself makes each
+   transformed element compute its own vanishing point, which reads as a warp
+   rather than as an object being turned. */
 .chart-result-canvas-wrap {
   display: flex;
   justify-content: center;
   width: 100%;
+  perspective: 1100px;
+  perspective-origin: 50% 50%;
 }
 
 /* The dot-glow/burst overlays are positioned via percentages of their
@@ -730,6 +736,8 @@ body[data-boot]::after {
    .holo-surface::after is inset:-15% by design, so without clipping the foil
    escaped and painted a second rounded rectangle around the whole card. */
 .chart-canvas-frame {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
   --glare-x: 50%;
   --glare-y: 50%;
   --glare-a: 0;
@@ -739,6 +747,16 @@ body[data-boot]::after {
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--elev-window) var(--os-shadow);
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transition: transform var(--motion-enter) var(--ease-enter);
+  will-change: transform;
+  cursor: grab;
+}
+/* While the pointer is on it the card must track exactly, with no easing to lag
+   behind the finger; the eased transition above is only for the spring back to
+   flat once the pointer leaves. Same split #capcard uses. */
+.chart-canvas-frame[data-live] {
+  transition: transform var(--motion-state) var(--ease-linear);
 }
 .chart-canvas-frame::before { opacity: 0.18; }
 .chart-canvas-frame::after {
@@ -752,7 +770,10 @@ body[data-boot]::after {
    a drop shadow, which is most of why the two did not look like the same
    object. script.js already drives --glare-x / --glare-y on .holo-surface. */
 
-.chart-canvas-frame:hover { --glare-a: 1; }
+/* --glare-a is written by the tilt handler now, from the same pointermove that
+   sets the rotation, so the specular lands where the pointer is instead of just
+   switching on somewhere. A :hover rule here would pin it at 1 and stop
+   restCard() ever fading it out. */
 
 /* Live glowing pulse marking the visitor's actual plotted dot — positioned
    over the static canvas via JS-computed percentages (drawCompass's exact
@@ -988,6 +1009,11 @@ body[data-boot]::after {
   .chart-dot-glow.is-ready {
     animation: none !important;
   }
+  .chart-canvas-frame {
+    transform: none !important;
+    transition: none;
+  }
+  .capcard__glare { opacity: 0 !important; }
   .chart-track,
   .chart-slide,
   .chart-screen,

@@ -1462,7 +1462,7 @@ body[data-mode="night"] #standee img {
    her entirely. Section 16 gives the portrait slab a layout that has somewhere
    to put her; below 700 the phone shell hides her along with the whole desktop,
    so this only ever needed to reach the phone breakpoint. */
-@media (max-width: 700px) { #standee { display: none; } }
+@media (max-width: 700px), (max-height: 500px) { #standee { display: none; } }
 
 /* read_me's two closing sections, paired.
 
@@ -2374,26 +2374,37 @@ body[data-mode="night"] #standee img {
 
 
 
-/* 13/13. The copy promises "the os is golden now" and "permanent halo
-   privileges", and until now nothing rendered it: the .angel rules that used to
-   do this became body[data-konami] when konami mode took them over, leaving
-   earn() adding a class with no styles behind it.
+/* 13/13. The copy promises "permanent halo privileges", and until now nothing
+   rendered it: the .angel rules that used to do this became body[data-konami]
+   when konami mode took them over, leaving earn() adding a class with no styles
+   behind it.
 
-   Warm rather than platinum on purpose. Platinum is the archangel THEME, which
-   is a look you pick; this is a state you finished for, and it persists over
-   whichever theme you are wearing. */
+   PLATINUM, NOT GOLD. This block used to argue the opposite -- "warm rather
+   than platinum on purpose", on the grounds that the copy said "the os is
+   GOLDEN now". That string says "blessed" now, so the reason had outlived
+   itself, and the halo was the last gold left in a palette that had already
+   decided against it: the card and all thirteen patches ship the PLAT ramp in
+   os.js, under a comment that reads "warm gold is a foreign object in a palette
+   this cool, and the system already reserves gold for the covenant hour itself
+   (--pulse goes warm only at 13:33)". Two files, opposite conclusions, and the
+   halo was the one that was alone.
+
+   Same ramp as the card, composed as light rather than as a gradient: a
+   near-white core so it separates on the dark skies, a violet bloom so it
+   separates on the pale ones. On archangel it half-dissolves into the theme,
+   which is correct -- that is the same achievement wearing itself. */
 body.angel #wordmark {
   filter:
     drop-shadow(0 0 1px rgba(118, 84, 172, 0.9))
     drop-shadow(0 2px 3px rgba(118, 84, 172, 0.6))
-    drop-shadow(0 0 16px rgba(244, 226, 168, 0.85))
-    drop-shadow(0 8px 20px rgba(212, 178, 96, 0.5));
+    drop-shadow(0 0 10px rgba(247, 243, 255, 0.92))
+    drop-shadow(0 6px 20px rgba(186, 150, 238, 0.7));
 }
 body.angel .icon__art {
   box-shadow:
-    inset 0 1px 0 var(--glass-spec), inset 0 0 0 1px rgba(244, 226, 168, 0.6), var(--elev-raised) var(--os-shadow), 0 0 18px rgba(244, 226, 168, 0.45);
+    inset 0 1px 0 var(--glass-spec), inset 0 0 0 1px rgba(197, 180, 228, 0.75), var(--elev-raised) var(--os-shadow), 0 0 18px rgba(186, 150, 238, 0.45);
 }
-body.angel .hire { box-shadow: inset 0 0 0 1px rgba(244, 226, 168, 0.75); }
+body.angel .hire { box-shadow: inset 0 0 0 1px rgba(197, 180, 228, 0.85); }
 
 /* AVAILABLE FOR WORK
    The middle of the bar, alone. The left is navigation and the right is
@@ -2470,7 +2481,7 @@ body.angel .hire { box-shadow: inset 0 0 0 1px rgba(244, 226, 168, 0.75); }
    the desktop shell renders with no hire affordance at all, which is exactly
    the tablet band. The site is an argument for hiring her; the button that
    closes it should not be the first thing responsive design throws away. */
-@media (max-width: 700px) { #hire { display: none; } }
+@media (max-width: 700px), (max-height: 500px) { #hire { display: none; } }
 
 /* THE RECEIPT. Set like one: mono throughout, a dashed rule top and bottom,
    labels left and values right, and a paper that is lighter than the window it
@@ -2559,9 +2570,14 @@ body.angel .hire { box-shadow: inset 0 0 0 1px rgba(244, 226, 168, 0.75); }
   0%, 100% { box-shadow: 0 0 0 0 var(--t-deco); }
   40% { box-shadow: 0 0 0 7px transparent; }
 }
+/* Same gesture, one row further in. The theme panel opens this menu, and a
+   menu that drops open with five swatches in it has not actually pointed at
+   anything; this is the pointing. */
+.swatch[data-nudge] { animation: dock-ring 1.1s var(--ease-standard) 3; border-radius: var(--radius-sm); }
 #toast[data-action] { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .dbtn[data-nudge] { animation: none; outline: 2px solid var(--t-deco); outline-offset: 3px; }
+  .swatch[data-nudge] { animation: none; outline: 2px solid var(--t-deco); outline-offset: 2px; }
 }
 
 /* ---- the phone status bar: decoration left, the offer centred, controls right */
@@ -3061,7 +3077,7 @@ body[data-preview] #phone-frame { display: flex; }
 }
 
 /* real phone: the shell IS the site */
-@media (max-width: 700px) {
+@media (max-width: 700px), (max-height: 500px) {
   #desktop, #dock, #menubar, #standee, #toast { display: none !important; }
   #phone-frame { display: flex; background: none; backdrop-filter: none; }
   #phone {
@@ -4174,6 +4190,40 @@ button.stk--live b { color: inherit; }
 }
 .patch__v span { font-size: var(--text-caption); font-weight: 700; color: var(--os-ink-dim); }
 .patch p { margin-top:  var(--space-xs); font-size: var(--text-body); line-height: 1.55; }
+
+/* THE TIME BETWEEN RELEASES. Genesis to beta was most of the build, and a
+   changelog that lists two cards back to back says it took no time at all.
+
+   Not a .patch: no border, no plate. The two either side are things that
+   shipped and this is the space where nothing did, so giving it a box would
+   make it read as a third release. The rule is dotted rather than solid for
+   the same reason -- solid is a connector, dotted is an ellipsis.
+
+   The segments are pseudo-elements, so they stay out of the accessibility
+   tree on their own and the words are simply read. Set in the house mono at
+   caption size, which is exactly what `beta` and `genesis` are wearing eight
+   pixels above and below it, so the label rhymes with the timeline it is
+   annotating instead of sitting on top of it. */
+.elapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap:  var(--space-sm);
+  margin: 0 0 var(--space-md);
+}
+.elapsed::before,
+.elapsed::after {
+  content: '';
+  width: 0;
+  height: 18px;
+  border-left: 2px dotted var(--os-border-strong);
+  opacity: 0.55;
+}
+.elapsed span {
+  font: 700 var(--text-caption)/1 var(--font-mono);
+  letter-spacing: var(--track-label);
+  color: var(--os-ink-dim);
+}
 
 /* ---- bags ---- */
 /* ---- bags: the error dialog ----

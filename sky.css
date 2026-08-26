@@ -270,13 +270,14 @@ body[data-mode="rain"] #sun { opacity: 0.25; }
 body[data-mode="snow"] #sun { opacity: 0.45; }
 body[data-mode="night"] #moon { opacity: 1; }
 
+/* display, not opacity: opacity 0 leaves 84 twinkle animations ticking all
+   day. Same rule the rain and the snow already use further down. */
 #stars {
   position: absolute;
   inset: 0 0 26% 0;
-  opacity: 0;
-  transition: opacity var(--motion-slow);
+  display: none;
 }
-body[data-mode="night"] #stars { opacity: 1; }
+body[data-mode="night"] #stars { display: block; }
 
 /* Lived in os.css until 23 Aug 2026, orphaned: sky.js was emitting bare spans,
    so nothing on any page ever matched this and the night sky was empty. The

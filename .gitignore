@@ -83,3 +83,14 @@ supabase/.temp/
 # Kept on disk, off the repo -- same rule as the rest of the unused art.
 images/os/covenant-logo.png
 images/os/icybearos-sm-covenant.png
+
+# Tooling, not the site. Every one of these RENDERS something -- badges, icons,
+# poses, the OG card, the resume preview, screenshot sets -- or MEASURES it.
+# The artefacts they produce are in images/ and are what ships. The repo is
+# public and attached to a portfolio; a folder of half-finished generators is
+# not what it should hold. Kept on disk, off the repo.
+test/*.py
+test/*.sh
+test/census.js
+test/og-image.html
+test/og-pose.webp
