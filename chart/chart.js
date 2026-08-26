@@ -5,6 +5,131 @@
 (function () {
   'use strict';
 
+
+  /* ---------------------------------------------------------------------
+     THEME — the desktop writes its wallpaper and weather to localStorage,
+     and tokens.css keys every colour off body[data-wall] / body[data-mode].
+     Reading the same two keys is the whole of "match the site's theme": all
+     twenty looks arrive for free, and a visitor who picked strawberry next
+     door keeps it here instead of being thrown back to the factory palette.
+     Defaults match the desktop's, so a first-time visitor sees base/day.
+     --------------------------------------------------------------------- */
+  /* ---------------------------------------------------------------------
+     THE BAR + THE INFO WINDOW
+     --------------------------------------------------------------------- */
+  (function chrome() {
+    var bar = document.querySelector('.cbar');
+    if (!bar) return;
+
+    /* icy is in Vienna, so the status follows her clock, not the visitor's --
+       the same rule the desktop uses, and the reason both can say "sleeping"
+       while it is the middle of your afternoon. */
+    function vienna() {
+      return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Vienna' }));
+    }
+    function tick() {
+      var cet = vienna();
+      /* 8..23 on her clock, the same window icyAwake() uses on the desktop --
+         the two must not disagree about whether she is up. */
+      var awake = cet.getHours() >= 8 && cet.getHours() < 23;
+      var fmt = { hour: 'numeric', minute: '2-digit' };
+      var clock = document.getElementById('cbar-clock');
+      var state = document.getElementById('cbar-state');
+      var text = document.getElementById('cbar-state-text');
+      if (clock) {
+        clock.textContent = new Date().toLocaleTimeString([], fmt);   /* yours */
+        clock.setAttribute('data-tip', 'icy time · ' + cet.toLocaleTimeString([], fmt) + ' CET');
+      }
+      if (text) text.textContent = awake ? 'icy: online' : 'icy: sleeping';
+      if (state) state.toggleAttribute('data-asleep', !awake);
+    }
+    tick();
+    setInterval(tick, 15000);
+
+    /* one engine, one preference: sfx.js reads the same key the desktop writes,
+       so muting on one side is muting on the other */
+    paintSound('../');
+    bar.addEventListener('click', function (e) {
+      if (!e.target.closest('[data-act="sound"]')) return;
+      setSoundPref(!soundIsOn(), '../');
+    });
+
+    /* the window is fetched once, on first open, not at load: nobody should
+       pay for markup they may never ask to see */
+    var sheet = document.getElementById('info');
+    var host = sheet.querySelector('.info__host');
+    var title = document.getElementById('info-title');
+    var mounted = null;
+
+    function open(tab) {
+      sheet.hidden = false;
+      sheet.setAttribute('aria-hidden', 'false');
+      requestAnimationFrame(function () { sheet.setAttribute('data-open', ''); });
+      if (!mounted) {
+        mounted = mountInfo(host, '../').catch(function (err) {
+          host.innerHTML = '<p class="cap__note">could not load that just now. ' +
+            '<a href="../">open it on the desktop</a> instead.</p>';
+          if (window.console) console.error(err);
+        });
+      }
+      mounted.then(function () { if (tab) showInfoTab(host, tab); syncTitle(); });
+    }
+    function syncTitle() {
+      var on = host.querySelector('.wtab.is-on');
+      if (on && title) title.textContent = (on.querySelector('.wtab__full') || on).textContent.trim();
+    }
+    function close() {
+      sheet.removeAttribute('data-open');
+      sheet.setAttribute('aria-hidden', 'true');
+      setTimeout(function () { sheet.hidden = true; }, 240);
+    }
+
+    document.getElementById('cbar-hire').addEventListener('click', function (e) {
+      e.preventDefault();
+      open('resume');                       /* the tab someone hiring wants */
+    });
+    document.getElementById('info-close').addEventListener('click', close);
+    sheet.addEventListener('click', function (e) { if (e.target === sheet) close(); });
+    host.addEventListener('click', function (e) {
+      if (e.target.closest('.wtab')) setTimeout(syncTitle, 0);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !sheet.hidden) close();
+    });
+  }());
+
+  /* The same scene the desktop stands in, from the same file. Built before the
+     theme is applied so the layers are already in place when data-wall lands
+     and CSS decides which of them this theme shows. */
+  buildSky();
+
+  (function applyTheme() {
+    var NS = 'icybear.v1.';
+    function read(key, fallback) {
+      try {
+        var raw = localStorage.getItem(NS + key);
+        return raw === null ? fallback : JSON.parse(raw);
+      } catch (e) { return fallback; }
+    }
+    var wall = read('wall', 'base');
+    var mode = read('mode', 'auto');
+    if (mode === 'auto') {
+      /* The VISITOR's clock, 21 to 7, byte for byte what effMode() uses on the
+         desktop. This used to read Vienna at 20 to 6, under a comment claiming
+         it matched the desktop -- two different clocks AND two different
+         thresholds, so walking from the desktop into the chart could flip day
+         to night for anyone in a wide band of timezones. Which of the two is
+         "right" is a real question, but they have to be the same, and the
+         desktop is the one people arrive on.
+         Whether ICY is awake is a different question with a different answer,
+         and that one does follow Vienna -- see the bar's tick(). */
+      var h = new Date().getHours();
+      mode = (h >= 21 || h < 7) ? 'night' : 'day';
+    }
+    document.body.dataset.wall = wall;
+    document.body.dataset.mode = mode;
+  }());
+
   // ---------------------------------------------------------------------
   // Tuning constants (open decisions, flagged in quiz-page-spec.md §15 —
   // no playtest data exists yet, these are reasonable starting points).
@@ -152,7 +277,7 @@
 
   var FLAVOR = {
     hydration: {
-      low: 'hydration: dehydrated. drink water. i Will be checking.',
+      low: 'hydration: dehydrated. drink water. i will be checking.',
       mid: 'hydration: not bad. also not good. reflect.',
       high: "hydration: hydrated. i'm proud of you. keep it up."
     },
@@ -177,6 +302,7 @@
   var currentScreen = 'intro';
   var currentResult = null;
   var pfpImage = null;
+  var pfpHandle = '';        /* printed on the card above the result name */
   var pfpTimeoutId = null;
   var fontsReady = false;
 
@@ -197,7 +323,6 @@
   var startBtn = document.getElementById('chart-start');
   var canvas = document.getElementById('chart-canvas');
   var ctx = canvas ? canvas.getContext('2d') : null;
-  var pfpFileInput = document.getElementById('pfp-file');
   var pfpHandleInput = document.getElementById('pfp-handle');
   var pfpHandleGoBtn = document.getElementById('pfp-handle-go');
   var pfpClearBtn = document.getElementById('pfp-clear');
@@ -209,6 +334,7 @@
   var loadingLineEl = document.getElementById('chart-loading-line');
   var dotGlowEl = document.getElementById('chart-dot-glow');
   var burstEl = document.getElementById('chart-burst');
+  var canvasFrame = document.querySelector('.chart-canvas-frame');
 
   // Canvas export cache, refreshed at the end of every render(). Having
   // this ready ahead of time (instead of generating it on-demand inside a
@@ -223,7 +349,7 @@
     if (!track) return;
     QUESTIONS.forEach(function (q, i) {
       var slide = document.createElement('div');
-      slide.className = 'chart-slide';
+      slide.className = 'chart-slide glass';
       slide.setAttribute('data-index', String(i));
 
       var statement = document.createElement('p');
@@ -247,7 +373,7 @@
         range.appendChild(rangeTrack);
         var notches = document.createElement('div');
         notches.className = 'chart-range__notches';
-        notches.style.gridTemplateColumns = 'repeat(' + optionCount + ', 1fr)';
+        notches.style.setProperty('--opts', String(optionCount));
         for (var n = 0; n < optionCount; n++) {
           var notch = document.createElement('span');
           notches.appendChild(notch);
@@ -258,7 +384,7 @@
 
       var scale = document.createElement('div');
       scale.className = 'chart-scale' + (isChoice ? ' chart-scale--choice' : '');
-      if (!isChoice) scale.style.gridTemplateColumns = 'repeat(' + optionCount + ', 1fr)';
+      if (!isChoice) scale.style.setProperty('--opts', String(optionCount));
       scale.setAttribute('role', 'group');
       scale.setAttribute('aria-label', q.text);
 
@@ -274,6 +400,7 @@
         btn.setAttribute('data-question-index', String(i));
         btn.setAttribute('data-value', String(opt.value));
         btn.addEventListener('click', function () {
+          sfx('answer');            /* also the haptic tick on a phone */
           answerQuestion(i, opt.value);
         });
         scale.appendChild(btn);
@@ -402,11 +529,14 @@
   function resetToIntro() {
     answers = new Array(QUESTIONS.length).fill(null);
     activeIndex = 0;
-    pfpImage = null;
     currentResult = null;
-    if (pfpHandleInput) pfpHandleInput.value = '';
-    if (pfpFileInput) pfpFileInput.value = '';
-    if (pfpClearBtn) pfpClearBtn.hidden = true;
+    /* The portrait and the handle SURVIVE a rediagnose, deliberately. Same
+       person, same account: someone going again wants their own face on the
+       second card too, and `clear pfp` is sitting right there if they do not.
+       What was broken was not that reset kept them -- it is that reset forgot
+       the IMAGE and the input but not the HANDLE, so the next card printed
+       `@you is a ...` over the default sparkle. A half-forget, which is worse
+       than either forgetting or keeping. */
     if (shareHint) shareHint.textContent = '';
     if (dotGlowEl) dotGlowEl.classList.remove('is-ready');
     if (burstEl) burstEl.innerHTML = '';
@@ -539,12 +669,12 @@
   function ensureFonts() {
     if (fontsReady) return Promise.resolve();
     var loads = [
-      document.fonts.load('400 90px "Bagel Fat One"'),
-      document.fonts.load('500 24px "Montserrat"'),
-      document.fonts.load('700 24px "Montserrat"'),
-      document.fonts.load('800 24px "Montserrat"'),
-      document.fonts.load('400 24px "Space Mono"'),
-      document.fonts.load('700 24px "Space Mono"')
+      document.fonts.load('400 90px ' + DISP),
+      document.fonts.load('500 24px ' + BODY),
+      document.fonts.load('700 24px ' + BODY),
+      document.fonts.load('800 24px ' + BODY),
+      document.fonts.load('400 24px ' + MONO),
+      document.fonts.load('700 24px ' + MONO)
     ];
     return Promise.all(loads).then(function () {
       return document.fonts.ready;
@@ -557,7 +687,26 @@
   // Canvas render
   // ---------------------------------------------------------------------
   var CARD_W = 1080;
+  var FOOTER_SIZE = 74;   /* read by render() and by drawFooter() */
   var CARD_H = 1350;
+
+  /* EVERY FAMILY CARRIES ITS FALLBACK. These were bare -- `'500 31px
+     "Montserrat"'` -- and a canvas font string naming one unavailable family
+     does NOT degrade the way a CSS stack does. There is no stack to fall
+     through, so it drops to the browser's default standard font, which is
+     Times. A missing webfont therefore did not come out as a sans, it came out
+     as a SERIF, on a card that has no serif anywhere in it.
+
+     Two of the four faces this card sets are at weights the page's own chrome
+     never uses -- Montserrat 500 and Space Mono 400 -- so they are the two most
+     likely not to be resident at the moment of a draw, and they are exactly the
+     two that showed up in Times.
+
+     Same three constants os.js keeps for the proof-of-visit card, for the same
+     reason, and wordmark.js keeps its own. */
+  var DISP = '"Bagel Fat One", cursive';
+  var MONO = '"Space Mono", monospace';
+  var BODY = '"Montserrat", sans-serif';
 
   var PALETTE = {
     purpleDark: '#5a3f8f',
@@ -566,8 +715,18 @@
     purpleAccent: '#8b6cc9',
     purpleAccent2: '#9a7fd1',
     pink: '#c45cae',
+    /* the same pink taken dark enough to be legal as text on the card's panel;
+       PALETTE.pink stays what it is for the plotted dot and the rarity badge,
+       which are marks rather than prose */
+    pinkInk: '#a84f95',
     pinkSoft: '#e07bb8',
-    lilac: '#b99df0'
+    lilac: '#b99df0',
+    /* the readout's two columns and its leader. See drawReadout for why the
+       label is the lightest purple on this hue that still clears 7:1 and why
+       the value had to go darker rather than the label lighter. */
+    readoutLabel: '#5a3f8f',
+    readoutValue: '#402d66',
+    readoutLeader: 'rgba(90,63,143,0.30)'
   };
 
   function wrapText(context, text, x, y, maxWidth, lineHeight, align) {
@@ -658,17 +817,44 @@
       var dh = ih * scale;
       context.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
     } else {
+      /* THE NO-PHOTO PLATE. This was a single ✦ set in Space Mono at 1.1x the
+         inner radius, and the problem with it was not that it looked bad -- it
+         was that it said nothing. A sparkle in the portrait slot is decoration
+         standing where an identity goes, and this is the slot's DEFAULT state:
+         most cards are drawn before anyone types a handle, so the sparkle was
+         what the majority of cards actually shipped with.
+
+         A bust says the one true thing about the visitor at this point, which
+         is that we do not know who they are yet. It is the same sentence the
+         line beside it now prints in words -- `anon is a ...` -- so the picture
+         and the caption agree instead of the picture being a mood.
+
+         Two circles and a gap. The gap is the neck and it has to stay: butted
+         together, head and shoulders merge into one lump with no edge between
+         them, which is the same failure test/marks.py calls NO WHITE TOUCHES
+         WHITE. Everything is a fraction of the inner radius so the drawing
+         scales with the slot rather than with a number typed once.
+
+         Paler field than the old one, too. It ran to #b48ee9, saturated enough
+         to compete with the name beside it; a plate with no photo on it should
+         recede. */
       var grad = context.createLinearGradient(cx - innerRadius, cy - innerRadius, cx + innerRadius, cy + innerRadius);
-      grad.addColorStop(0, '#fff8fc');
-      grad.addColorStop(0.5, '#f8bfe6');
-      grad.addColorStop(1, '#b48ee9');
+      grad.addColorStop(0, '#fdf7ff');
+      grad.addColorStop(0.55, '#f4e6fb');
+      grad.addColorStop(1, '#e6d5f7');
       context.fillStyle = grad;
       context.fillRect(cx - innerRadius, cy - innerRadius, innerRadius * 2, innerRadius * 2);
-      context.fillStyle = 'rgba(90,63,143,0.55)';
-      context.font = '700 ' + Math.round(innerRadius * 1.1) + 'px "Space Mono"';
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      context.fillText('✦', cx, cy + 2);
+
+      /* Not a text colour and not held to a text floor: it is a placeholder
+         mark, and at full strength it reads as a portrait of somebody rather
+         than as the absence of one. */
+      context.fillStyle = 'rgba(90,63,143,0.34)';
+      context.beginPath();
+      context.arc(cx, cy - innerRadius * 0.26, innerRadius * 0.28, 0, Math.PI * 2);
+      context.fill();
+      context.beginPath();
+      context.arc(cx, cy + innerRadius * 0.82, innerRadius * 0.58, 0, Math.PI * 2);
+      context.fill();
     }
     context.restore();
     context.beginPath();
@@ -707,7 +893,7 @@
   }
 
   function drawBadge(context, text, cx, y, align, accentColor) {
-    context.font = '700 19px "Space Mono"';
+    context.font = '700 19px ' + MONO;
     var w = context.measureText(text).width + 36;
     var h = 42;
     var boxX = align === 'right' ? cx - w : cx;
@@ -725,8 +911,35 @@
     context.textBaseline = 'alphabetic';
   }
 
+  /* "a" or "an", off the first sound of the result. Written against the word
+     that follows it, not the whole name: "unc gamer" starts with a vowel
+     LETTER but takes "an" anyway here, which is the common reading, and the
+     handful of results this quiz can produce are all regular. */
+  function article(name) {
+    return /^[aeiou]/i.test(String(name).trim()) ? 'an' : 'a';
+  }
+
   function render() {
     if (!ctx || !currentResult) return;
+
+    /* ONE CALLER AWAITED THE FONTS AND FIVE DID NOT. ensureFonts() was awaited
+       in exactly one place -- the loading beat between the last question and
+       the reveal -- on the reasonable-sounding assumption that the reveal is
+       how anyone reaches a card. It is not. `view your last save` goes straight
+       here on purpose, skipping the beat because there is nothing to compute;
+       the pfp handlers redraw on their own when an avatar lands or is cleared.
+       Every one of those draws whatever is resident at that instant.
+
+       So the guarantee moves to the draw itself rather than living in one path
+       that happens to have it. Draw now with what is available, and draw again
+       when the rest arrives -- the same bargain font-display: swap already
+       makes for the DOM on this site, so the card behaves like the page around
+       it. fontsReady latches inside ensureFonts, so the second pass cannot
+       schedule a third. The error arm matters: document.fonts.load rejects on a
+       face that will never arrive, and without it the card would keep the
+       fallback AND leave an unhandled rejection behind it. */
+    if (!fontsReady) ensureFonts().then(render, function () { /* keep what drew */ });
+
     var result = currentResult;
 
     ctx.clearRect(0, 0, CARD_W, CARD_H);
@@ -759,11 +972,11 @@
 
     // Title
     ctx.fillStyle = PALETTE.purpleAccent;
-    ctx.font = '700 28px "Space Mono"';
+    ctx.font = '700 28px ' + MONO;
     ctx.textAlign = 'center';
     ctx.fillText('✦ THE ICYBEAR ALIGNMENT CHART ✦', CARD_W / 2, 118);
 
-    drawFadeLine(ctx, pad + 40, 142, CARD_W - pad - 40, 142);
+    drawFadeLine(ctx, pad + 40, 142, CARD_W - pad - 40);
 
     // Header: pfp + name, vertically centered against each other
     var pfpRadius = 60;
@@ -773,9 +986,9 @@
 
     var nameMaxWidth = CARD_W - (pfpCx + pfpRadius + 36) - pad - 20;
     var nameSize = fitTextToWidth(ctx, result.displayName, nameMaxWidth, 82, 42, function (s) {
-      return '400 ' + s + 'px "Bagel Fat One"';
+      return '400 ' + s + 'px ' + DISP;
     });
-    ctx.font = '400 ' + nameSize + 'px "Bagel Fat One"';
+    ctx.font = '400 ' + nameSize + 'px ' + DISP;
     // Solid deep color, not a pale gradient-clip — same fix as the intro
     // title: light pastel gradients on Bagel Fat One don't hold contrast
     // against this card's equally light background at body-copy sizes.
@@ -785,18 +998,54 @@
     ctx.shadowBlur = 0;
     var nameX = pfpCx + pfpRadius + 32;
     var nameLineHeight = nameSize * 1.08;
-    wrapTextVCentered(ctx, result.displayName, nameX, headerCenterY, nameMaxWidth, nameLineHeight, 'left');
+    /* The name does NOT move when a handle appears. Centring the PAIR against
+       the pfp was the obvious thing and it was wrong: everything under the
+       header is positioned off headerCenterY, so shifting the name pushed it
+       into the diagnosis line while the pfp and the line both stayed put.
+       The handle goes in the empty space above instead, and nothing else
+       on the card knows it is there. */
+    wrapTextVCentered(ctx, result.displayName, nameX, headerCenterY,
+                      nameMaxWidth, nameLineHeight, 'left');
     ctx.shadowColor = 'transparent';
     ctx.shadowOffsetY = 0;
 
+    /* ALWAYS DRAWN, WITH OR WITHOUT A HANDLE. This used to be conditional, and
+       that gave the header two different compositions: with a handle, a caption
+       and a name; without one, a name alone sitting next to an empty disc. The
+       second is the one most cards ship with -- the handle is optional and the
+       card renders long before anybody fills it in -- so the default state was
+       the worse-composed of the two, and the better one was reserved for people
+       who did extra work.
+
+       `anon` is a real answer to "who is this", not a placeholder for one, and
+       it makes the sentence complete either way: `anon is a soft doomer` reads
+       as a diagnosis of somebody. article() already picks a/an off the result,
+       so `anon is an unc gamer` comes out right too.
+
+       Pinned to the PFP, not to the name: its cap-top lines up with the top of
+       the circle, so the handle and the name read as one block hanging off the
+       portrait rather than a caption floating above it. Space Mono's cap height
+       is ~0.7em, so the baseline sits that far below the top. */
+    var HSIZE = 30;
+    var handleBaseline = (headerCenterY - pfpRadius) + HSIZE * 0.7;
+    ctx.font = '700 ' + HSIZE + 'px ' + MONO;
+    /* #c45cae measured 3.58:1 on the panel here -- under the 4.5 this site sets
+       for secondary text, never mind the 7 it sets for primary. It was survivable
+       while the line was opt-in; it is not now that every card carries it. Same
+       hue, same saturation, dropped in value until it cleared: 4.66:1. */
+    ctx.fillStyle = PALETTE.pinkInk;
+    ctx.textAlign = 'left';
+    ctx.fillText((pfpHandle ? '@' + pfpHandle : 'anon') + ' is ' + article(result.displayName),
+                 nameX, handleBaseline);
+
     // Diagnosis line
     ctx.fillStyle = PALETTE.purpleText;
-    ctx.font = '500 31px "Montserrat"';
+    ctx.font = '500 31px ' + BODY;
     ctx.textAlign = 'left';
     var diagY = headerCenterY + pfpRadius + 32;
     var diagHeight = wrapText(ctx, result.diagnosisLine, pad + 40, diagY, CARD_W - pad * 2 - 80, 42, 'left');
 
-    drawFadeLine(ctx, pad + 40, diagY + diagHeight - 6, CARD_W - pad - 40, diagY + diagHeight - 6);
+    drawFadeLine(ctx, pad + 40, diagY + diagHeight - 6, CARD_W - pad - 40);
 
     // Compass — sized dynamically to actually fill the space available
     // between the header and a reserved bottom block (tags + footer +
@@ -810,17 +1059,29 @@
     // other, which is what caused the stray-looking line before.
     var compassY = diagY + diagHeight + 64;
 
-    var tagRowHeight = 22 + 26;
-    var tagGap = 14;
-    // Always two tags now — hydration always has something to say (low/mid/
-    // high), it's no longer a conditional-presence flag.
-    var tagsList = [result.hydrationText, result.auraText];
-    var tagsBlockHeight = tagsList.length * tagRowHeight + (tagsList.length - 1) * tagGap;
+    /* Two rows, always. Hydration always has something to say (low/mid/high),
+       so this is not a conditional-presence flag -- but the block height is
+       still computed from the list rather than typed as a constant, because the
+       compass sizes itself against it and a wrong constant here is a compass
+       that grows into the footer. */
+    var READOUT_ROW_H = 44;
+    var READOUT_ROW_GAP = 16;
+    var readoutRows = [splitReadout(result.hydrationText), splitReadout(result.auraText)];
+    var tagsBlockHeight = readoutRows.length * READOUT_ROW_H +
+                          (readoutRows.length - 1) * READOUT_ROW_GAP;
 
     var GAP_COMPASS_TO_TAGS = 70;
-    var GAP_TAGS_TO_FOOTER = 54;
-    var FOOTER_ALLOWANCE = 52;
-    var reservedBottom = GAP_COMPASS_TO_TAGS + tagsBlockHeight + GAP_TAGS_TO_FOOTER + FOOTER_ALLOWANCE + pad;
+    /* The wordmark is pinned to the CARD, not stacked after the tags. Driving
+       it off the tag block is what let it drift: it was too high at size 34
+       and then straight through the bottom border at 74, because the tags do
+       not know how tall the thing below them is.
+       Artwork is drawn at cap-height 74 * 1.16 = 86, sitting from y-70 to
+       y+16, so a baseline 46px above the panel edge leaves ~30px of margin. */
+    var FOOTER_BASE = wordmarkBaseline(CARD_H, pad, FOOTER_SIZE);
+    var FOOTER_TOP = FOOTER_BASE - FOOTER_SIZE * 1.16 * 0.82;
+    /* what the compass may not grow into: the wordmark, plus air above it */
+    var FOOTER_ALLOWANCE = (CARD_H - pad - FOOTER_TOP) + 26;
+    var reservedBottom = GAP_COMPASS_TO_TAGS + tagsBlockHeight + FOOTER_ALLOWANCE + pad;
 
     var availableForCompass = CARD_H - compassY - reservedBottom;
     var compassSize = Math.max(520, Math.min(720, availableForCompass));
@@ -828,14 +1089,15 @@
     var dotPos = drawCompass(ctx, compassX, compassY, compassSize, result);
     positionDotGlow(dotPos.dotX, dotPos.dotY);
 
-    // Garnish tags — stacked vertically, height varies by how many are
-    // showing; footer is positioned off the actual returned height, not a
-    // fixed guess, so it can never collide with either case.
+    // The readout — full-width rows in the same text column as the two fade
+    // rules above, so the card has one measure down its whole length instead
+    // of a centred block floating inside a wider one. Footer is positioned off
+    // the returned height, not a fixed guess.
     var tagsTopY = compassY + compassSize + GAP_COMPASS_TO_TAGS;
-    var tagsHeight = drawTags(ctx, tagsTopY, CARD_W / 2, CARD_W - pad * 2 - 80, tagsList);
+    drawReadout(ctx, tagsTopY, pad + 40, CARD_W - pad * 2 - 80, readoutRows);
 
     // Footer branding — hard requirement: bake URL + brand mark into pixels.
-    drawFooter(ctx, tagsTopY + tagsHeight + GAP_TAGS_TO_FOOTER);
+    drawFooter(ctx, FOOTER_BASE);
 
     refreshCachedBlob();
   }
@@ -862,17 +1124,30 @@
     dotGlowEl.classList.add('is-ready');
   }
 
-  // Fading horizontal divider — canvas echo of the site's
-  // .section-heading__line (a rule that fades to transparent).
-  function drawFadeLine(context, x1, y, x2, y2) {
+  /* Fading horizontal divider. It started as a canvas echo of the site's
+     .section-heading__line, which is a one-way fade -- `linear-gradient(90deg,
+     rgba(255,255,255,0.9), transparent)` -- because in the DOM that rule always
+     trails off to the RIGHT of a left-set heading. It is doing a different job
+     here and the borrowed direction was wrong for it.
+
+     Both rules on this card span the full text column. The upper one sits under
+     a CENTRED title, so a left-to-right fade made it look mispainted -- solid on
+     one side, gone on the other, under symmetric type. The lower one is not an
+     underline at all: it separates the left-aligned diagnosis block from the
+     centred compass below it, and a divider between two blocks has no reason to
+     prefer an end.
+
+     So it fades from both ends into the middle. Strongest where the eye is. */
+  function drawFadeLine(context, x1, y, x2) {
     var grad = context.createLinearGradient(x1, 0, x2, 0);
-    grad.addColorStop(0, 'rgba(154,127,209,0.55)');
+    grad.addColorStop(0, 'rgba(154,127,209,0)');
+    grad.addColorStop(0.5, 'rgba(154,127,209,0.55)');
     grad.addColorStop(1, 'rgba(154,127,209,0)');
     context.strokeStyle = grad;
     context.lineWidth = 1.5;
     context.beginPath();
     context.moveTo(x1, y);
-    context.lineTo(x2, y2 === undefined ? y : y2);
+    context.lineTo(x2, y);
     context.stroke();
   }
 
@@ -979,7 +1254,7 @@
     context.stroke();
 
     // Pole labels
-    context.font = '700 24px "Space Mono"';
+    context.font = '700 24px ' + MONO;
     context.fillStyle = PALETTE.purpleDark;
     context.textAlign = 'center';
     context.fillText('INTERNET ANGEL', cx, y - 20);
@@ -1058,61 +1333,123 @@
   // ever having to cram two chips into the card's width at once. Returns
   // the total height used so the caller can position whatever comes next
   // (the footer) off the real result instead of a guessed constant.
-  function drawTags(context, topY, centerX, maxWidth, tagsList) {
-    var chipGap = 14;
-    var padX = 26;
-    var baseSize = 22;
-    var chipHeight = baseSize + 26;
+  /* Space Mono, letter-spaced, drawn from a left edge. os.js has a tracked()
+     of its own but it centres on a point, which is the wrong anchor for a
+     label in a two-column row. Same reason it exists there: ctx.letterSpacing
+     is too new to rely on for a card that has to render identically in every
+     browser that might open it. Returns the width it drew. */
+  function trackedLeft(context, text, x, y, spacing) {
+    var chars = text.split('');
+    var cx = x;
+    for (var i = 0; i < chars.length; i++) {
+      context.fillText(chars[i], cx, y);
+      cx += context.measureText(chars[i]).width + spacing;
+    }
+    return (cx - spacing) - x;
+  }
 
-    tagsList.forEach(function (t, i) {
-      var size = baseSize;
-      context.font = '700 ' + size + 'px "Space Mono"';
-      var w = context.measureText(t).width + padX * 2;
-      while (w > maxWidth && size > 15) {
-        size -= 1;
-        context.font = '700 ' + size + 'px "Space Mono"';
-        w = context.measureText(t).width + padX * 2;
-      }
-      var chipY = topY + i * (chipHeight + chipGap);
-      var chipX = centerX - w / 2;
-      context.fillStyle = 'rgba(255,255,255,0.8)';
-      roundRect(context, chipX, chipY, w, chipHeight, chipHeight / 2);
-      context.fill();
-      context.strokeStyle = '#ffffff';
-      context.lineWidth = 1.5;
-      roundRect(context, chipX, chipY, w, chipHeight, chipHeight / 2);
-      context.stroke();
-      context.fillStyle = PALETTE.purpleMid;
-      context.textAlign = 'center';
+  /* ---- the readout ----
+     These two lines were chips: a rounded white pill per line, centred, stacked.
+     Two things were wrong with that and only one of them was cosmetic.
+
+     THE COSMETIC ONE. A chip is for a short token -- `godparent`, `unc gamer`,
+     the kind of thing the proof-of-visit card puts in one. These are sentences:
+     `hydrated. i'm proud of you. keep it up.` is thirty-nine characters, and a
+     thirty-nine-character pill sitting above a nineteen-character pill, both
+     centred, is two ragged shapes pretending to be a set. Full-width rows make
+     the length difference stop mattering, because both rows end at the same x
+     no matter what is in them.
+
+     THE ONE THAT MATTERED. The chip ink was PALETTE.purpleMid on an 80%-white
+     pill: 4.65:1, and 4.14:1 where the pill thinned over the panel. This site
+     sets its own floors -- 7:1 primary, 4.5:1 secondary, written down in
+     test/contrast.py -- and that was under both readings. It is a results
+     sheet now and both columns clear 7:1, measured against the panel gradient
+     at the y they actually land on:
+
+       label  #5a3f8f   7.15:1     value  #402d66  10.18:1
+
+     #5a3f8f is not a taste decision. Walking this hue lighter, it is the LAST
+     step that still reaches 7:1 -- #5d4194, one notch up, is 6.86:1. So the
+     emphasis between the two columns could not be made by lifting the label off
+     the value; it had to be made by pushing the value below the label. Which is
+     the better result anyway: the value gets heavier rather than the label
+     getting washed out.
+
+     The leader dots are held to nothing, because a leader is a rule and carries
+     no information -- it exists to walk the eye from a label to a number. */
+  function drawReadout(context, topY, x, maxWidth, rows) {
+    var ROW_H = 44, ROW_GAP = 16;
+    var LABEL_SIZE = 20, LABEL_TRACK = 3;
+    var VALUE_BASE = 26, VALUE_MIN = 19;
+    var LEADER_PAD = 14;          /* air on each side of the dotted run */
+
+    rows.forEach(function (row, i) {
+      var label = row[0], value = row[1];
+      var midY = topY + i * (ROW_H + ROW_GAP) + ROW_H / 2;
+
+      context.textAlign = 'left';
       context.textBaseline = 'middle';
-      context.fillText(t, chipX + w / 2, chipY + chipHeight / 2 + 1);
+
+      context.font = '700 ' + LABEL_SIZE + 'px ' + MONO;
+      context.fillStyle = PALETTE.readoutLabel;
+      var labelW = trackedLeft(context, label, x, midY, LABEL_TRACK);
+
+      /* The value is fitted, not assumed. The longest hydration string is 44
+         characters and the column is 944 wide; it fits at 26, but the fit loop
+         is what stops a future line from silently printing through the label. */
+      var size = VALUE_BASE;
+      context.font = '400 ' + size + 'px ' + MONO;
+      var room = maxWidth - labelW - LEADER_PAD * 2 - 24;
+      while (context.measureText(value).width > room && size > VALUE_MIN) {
+        size -= 1;
+        context.font = '400 ' + size + 'px ' + MONO;
+      }
+      var valueW = context.measureText(value).width;
+      var valueX = x + maxWidth - valueW;
+
+      context.fillStyle = PALETTE.readoutValue;
+      context.fillText(value, valueX, midY);
+
+      /* dots on a fixed 9px pitch, not stretched to fill: a leader is a rule
+         with a rhythm, and rescaling the gap per row would make two rows of the
+         same object look like two different objects */
+      var dotFrom = x + labelW + LEADER_PAD;
+      var dotTo = valueX - LEADER_PAD;
+      context.fillStyle = PALETTE.readoutLeader;
+      for (var dx = dotFrom; dx < dotTo; dx += 9) {
+        context.beginPath();
+        context.arc(dx, midY + 1, 1.4, 0, Math.PI * 2);
+        context.fill();
+      }
+
       context.textBaseline = 'alphabetic';
     });
 
-    return tagsList.length * chipHeight + (tagsList.length - 1) * chipGap;
+    return rows.length * ROW_H + (rows.length - 1) * ROW_GAP;
   }
 
+  /* `hydration: not bad. also not good. reflect.` arrives as one string with
+     its own label already on the front, which is exactly the two columns this
+     row needs -- so the split is free and the copy sheet stays the one place
+     the words live. Defensive on the colon: a line without one becomes a value
+     with no label rather than an empty row. */
+  function splitReadout(text) {
+    var cut = String(text).indexOf(': ');
+    if (cut < 0) return ['', String(text)];
+    return [String(text).slice(0, cut).toUpperCase(), String(text).slice(cut + 2)];
+  }
+
+  /* The same footer the proof-of-visit card draws: the logo ARTWORK tinted
+     through a foil gradient, with glints and three shadow passes, rather than
+     the url set in Bagel Fat One. wordmark.js owns it so the two cards cannot
+     drift again. Falls back to type on its own if the art has not loaded. */
   function drawFooter(context, y) {
-    context.textAlign = 'center';
-    context.font = '400 34px "Bagel Fat One"';
-    var text = '✦ icybear.fun ✦';
-    var w = context.measureText(text).width;
-    // Same color family as the site nav's wordmark, but dropping its
-    // near-white first stop — that reads fine in CSS against the nav's
-    // own background but was nearly illegible at this size against the
-    // card's light background. Starts on a more saturated pink instead,
-    // plus a soft dark-tinted shadow for edge definition.
-    var grad = context.createLinearGradient(CARD_W / 2 - w / 2, 0, CARD_W / 2 + w / 2, 0);
-    grad.addColorStop(0, '#e88fd0');
-    grad.addColorStop(0.5, '#b48ee9');
-    grad.addColorStop(1, '#7ba3e8');
-    context.save();
-    context.shadowColor = 'rgba(120,80,180,0.3)';
-    context.shadowBlur = 8;
-    context.shadowOffsetY = 2;
-    context.fillStyle = grad;
-    context.fillText(text, CARD_W / 2, y);
-    context.restore();
+    /* 74, matching the proof-of-visit card on an identical 1080x1350 canvas.
+       This was 34, carried over from the old type-set footer, which put the
+       logo at under half the size the other card uses -- barely legible once
+       the card is scaled down to fit a screen. */
+    drawWordmark(context, CARD_W / 2, y, FOOTER_SIZE, document.getElementById('mark-img'));
   }
 
   // ---------------------------------------------------------------------
@@ -1155,8 +1492,55 @@
     });
   }
 
+  // icybearOS reads the latest diagnosis out of this key so the desktop can show
+  // it and the capture card can use it. Retakes overwrite; nothing is ever faked.
+  /* `card` and `v` ride along inside the SAME object rather than getting their
+     own key, for one reason: os.js's "forget me on this device" clears a fixed
+     list of keys, and a key it does not know about would survive a request to
+     be forgotten. name/line/at keep their exact shape, so the desktop reading
+     this is untouched -- it simply ignores the extra fields. */
+  var SAVE_V = 1;
+
+  function rememberResult(result) {
+    try {
+      localStorage.setItem('icybear.v1.diag', JSON.stringify({
+        name: result.displayName,
+        line: result.diagnosisLine,
+        at: new Date().toISOString(),
+        v: SAVE_V,
+        handle: pfpHandle || '',
+        card: result
+      }));
+    } catch (e) { /* private mode. the chart still works. */ }
+  }
+
+  /* Two different questions, and conflating them hid the buttons from everyone
+     who had already taken the quiz before this shipped:
+
+       hasTaken()  did they do this at all? true for ANY stored diagnosis,
+                   including the {name, line, at} ones written before saves
+                   carried a full card. Enough to stop saying "press start".
+       loadSave()  can this build REDRAW their card? needs the full result at
+                   a version it understands. An older save cannot be upgraded
+                   -- name and line alone will not draw a compass -- so those
+                   visitors get "play again" without the view button. */
+  function hasTaken() {
+    try { return !!(JSON.parse(localStorage.getItem('icybear.v1.diag')) || {}).name; }
+    catch (e) { return false; }
+  }
+
+  function loadSave() {
+    try {
+      var raw = JSON.parse(localStorage.getItem('icybear.v1.diag'));
+      if (!raw || raw.v !== SAVE_V || !raw.card || !raw.card.displayName) return null;
+      return raw;
+    } catch (e) { return null; }
+  }
+
   function showResult() {
+    sfx('reveal');
     currentResult = computeResult();
+    rememberResult(currentResult);
     if (loadingLineEl) {
       loadingLineEl.textContent = LOADING_LINES[Math.floor(Math.random() * LOADING_LINES.length)];
     }
@@ -1173,18 +1557,6 @@
   // ---------------------------------------------------------------------
   // PFP handling
   // ---------------------------------------------------------------------
-  function setPfpFromFile(file) {
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      var img = new Image();
-      img.onload = function () { pfpImage = img; showPfpClear(); render(); };
-      img.onerror = function () { pfpImage = null; render(); };
-      img.src = e.target.result;
-    };
-    reader.onerror = function () { pfpImage = null; };
-    reader.readAsDataURL(file);
-  }
 
   function showPfpClear() {
     if (pfpClearBtn) pfpClearBtn.hidden = false;
@@ -1192,6 +1564,9 @@
 
   function setPfpFromHandle(handleRaw) {
     var handle = (handleRaw || '').replace(/^@/, '').trim();
+    pfpHandle = handle;
+    render();                 /* the handle shows even while the pfp loads */
+    if (currentResult) rememberResult(currentResult);
     if (!handle) return;
     if (pfpTimeoutId) window.clearTimeout(pfpTimeoutId);
 
@@ -1202,7 +1577,7 @@
     function fail() {
       if (settled) return;
       settled = true;
-      if (shareHint) shareHint.textContent = "couldn't load that pfp, no worries — card still works.";
+      if (shareHint) shareHint.textContent = "couldn't load that pfp, no worries. card still works.";
     }
 
     img.onload = function () {
@@ -1220,14 +1595,27 @@
     // header (only the final /x/ response does), which silently fails the
     // crossOrigin='anonymous' load every time. Hitting /x/ directly avoids
     // the redirect entirely.
+    /* unavatar.io is a third party, and it necessarily learns the handle and the
+       IP. It does not also need the page: no-referrer stops the URL going with
+       the request. Independent of crossOrigin, which is about reading the
+       pixels back out of the canvas. */
+    img.referrerPolicy = 'no-referrer';
     img.src = 'https://unavatar.io/x/' + encodeURIComponent(handle);
   }
 
-  function clearPfp() {
+  /* One place to forget the portrait. It used to be written out twice -- here
+     and in resetToIntro -- and the copies drifted: reset cleared the IMAGE and
+     the input but not the HANDLE, so pressing `again` left the card still
+     printing `@you is a ...` over the default sparkle. Same list, one copy. */
+  function clearPfpState() {
     pfpImage = null;
-    if (pfpFileInput) pfpFileInput.value = '';
+    pfpHandle = '';
     if (pfpHandleInput) pfpHandleInput.value = '';
     if (pfpClearBtn) pfpClearBtn.hidden = true;
+  }
+
+  function clearPfp() {
+    clearPfpState();
     render();
   }
 
@@ -1259,20 +1647,20 @@
   // see shareToX() for why that ordering specifically matters.
   function writeBlobToClipboard(blob, btn) {
     if (!blob || !navigator.clipboard || !window.ClipboardItem) {
-      if (shareHint) shareHint.textContent = "your browser can't copy images directly — try download instead.";
+      if (shareHint) shareHint.textContent = "your browser can't copy images directly. try download instead.";
       return;
     }
     navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]).then(function () {
       if (shareHint) shareHint.textContent = 'copied! paste it into your tweet.';
       flashButtonState(btn, 'copied ✓');
     }).catch(function () {
-      if (shareHint) shareHint.textContent = "couldn't copy automatically — try download instead.";
+      if (shareHint) shareHint.textContent = "couldn't copy automatically. try download instead.";
     });
   }
 
   function copyImage() {
     if (!navigator.clipboard || !window.ClipboardItem) {
-      if (shareHint) shareHint.textContent = "your browser can't copy images directly — try download instead.";
+      if (shareHint) shareHint.textContent = "your browser can't copy images directly. try download instead.";
       return;
     }
     if (cachedBlob) {
@@ -1333,7 +1721,7 @@
     if (cachedBlob) {
       writeBlobToClipboard(cachedBlob, btnShareX);
     } else if (shareHint) {
-      shareHint.textContent = "your browser can't copy images directly — try download instead.";
+      shareHint.textContent = "your browser can't copy images directly. try download instead.";
     }
     window.open(intentUrl, '_blank', 'noopener');
   }
@@ -1385,12 +1773,6 @@
   if (btnShareX) btnShareX.addEventListener('click', shareToX);
   if (btnDownload) btnDownload.addEventListener('click', downloadImage);
 
-  if (pfpFileInput) {
-    pfpFileInput.addEventListener('change', function (e) {
-      var file = e.target.files && e.target.files[0];
-      if (file) setPfpFromFile(file);
-    });
-  }
   if (pfpHandleGoBtn) {
     pfpHandleGoBtn.addEventListener('click', function () {
       setPfpFromHandle(pfpHandleInput ? pfpHandleInput.value : '');
@@ -1406,8 +1788,59 @@
   }
   if (pfpClearBtn) pfpClearBtn.addEventListener('click', clearPfp);
 
+  /* ---- the card is held, not displayed ----------------------------------
+     Ported from os.js rather than reinvented, because the proof-of-visit card
+     and this one are the same object in the hand and were not behaving like it:
+     that card tilted to the pointer and this one sat flat, while both wore the
+     same foil and the same glare. The frame here already mirrored #capcard in
+     every other respect -- the holo layers, the mask, the radius, the overflow
+     clip -- so this was the one piece missing.
+
+     NOTHING HERE TOUCHES THE CANVAS. The tilt, the foil and the glare are DOM
+     layers over the top; the exported PNG stays the flat card. os.js puts it
+     better: the foil is the moment, the flat card is the artefact.
+
+     --glare-a is set from the same handler as the rotation, so the specular
+     tracks the pointer instead of switching on at :hover -- which is also why
+     the old :hover rule had to come out of the stylesheet. */
+  var MAX_TILT = 11;
+
+  function tiltClamp(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  function tiltFrom(e) {
+    if (prefersReducedMotion || !canvasFrame) return;
+    var r = canvasFrame.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    var px = tiltClamp((e.clientX - r.left) / r.width);
+    var py = tiltClamp((e.clientY - r.top) / r.height);
+    canvasFrame.setAttribute('data-live', '');
+    canvasFrame.style.setProperty('--tilt-y', ((px - 0.5) * 2 * MAX_TILT).toFixed(2) + 'deg');
+    canvasFrame.style.setProperty('--tilt-x', ((0.5 - py) * 2 * MAX_TILT).toFixed(2) + 'deg');
+    canvasFrame.style.setProperty('--glare-x', (px * 100).toFixed(1) + '%');
+    canvasFrame.style.setProperty('--glare-y', (py * 100).toFixed(1) + '%');
+    canvasFrame.style.setProperty('--glare-a', '1');
+  }
+
+  function restCard() {
+    if (!canvasFrame) return;
+    canvasFrame.removeAttribute('data-live');   /* hand it back to the easing */
+    canvasFrame.style.setProperty('--tilt-x', '0deg');
+    canvasFrame.style.setProperty('--tilt-y', '0deg');
+    canvasFrame.style.setProperty('--glare-a', '0');
+  }
+
+  if (canvasFrame) {
+    canvasFrame.addEventListener('pointermove', tiltFrom);
+    canvasFrame.addEventListener('pointerleave', restCard);
+    canvasFrame.addEventListener('pointercancel', restCard);
+  }
+
   window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', function (e) {
     prefersReducedMotion = e.matches;
+    /* a card left mid-tilt when the preference flips would stay tilted: the
+       stylesheet's !important kills the transform, but the inline custom
+       properties it was using would sit there for the next time it is off */
+    if (prefersReducedMotion) restCard();
   });
 
   // ---------------------------------------------------------------------
@@ -1424,8 +1857,52 @@
     });
   }
 
+  /* ---------------------------------------------------------------------
+     THE SAVE — someone who has taken this before is not starting.
+     --------------------------------------------------------------------- */
+  (function offerSave() {
+    var startBtn = document.getElementById('chart-start');
+    var loadBtn = document.getElementById('chart-load');
+    if (!startBtn || !loadBtn) return;
+
+    if (hasTaken()) startBtn.textContent = '▸ PLAY AGAIN';
+
+    var saved = loadSave();
+    if (!saved) return;
+    loadBtn.hidden = false;
+    loadBtn.textContent = 'view your last save ⟢';
+
+    loadBtn.addEventListener('click', function () {
+      sfx('tap');
+      currentResult = saved.card;
+      /* straight to the card: the loading beat exists to cover computing a
+         result, and there is nothing to compute for one already sitting in
+         storage. Making someone wait for a card they have seen is padding. */
+      showScreen('result');
+      if (saved.handle) {
+        if (pfpHandleInput) pfpHandleInput.value = saved.handle;
+        setPfpFromHandle(saved.handle);   /* re-fetches the avatar, and renders */
+      } else {
+        render();
+      }
+      triggerBurst();
+    });
+  }());
+
   var appEl = document.getElementById('app');
   if (appEl) appEl.style.display = ''; // only reveal the app shell once JS has actually run
+
+  /* Boot on every arrival. This was gated to once per session, on the theory
+     that going back and forth shouldn't replay it -- but the effect is 740ms
+     and it is the reason the page is fun to land on, so gating it meant it was
+     seen exactly once and never again. Phones replay their app-open animation
+     every single time for the same reason. */
+  (function boot() {
+    document.body.setAttribute('data-boot', '');
+    var done = function () { document.body.removeAttribute('data-boot'); };
+    document.querySelector('.chart-main').addEventListener('animationend', done, { once: true });
+    setTimeout(done, 1200);         /* backstop if the animation never fires */
+  }());
   buildSlides();
   showScreen('intro');
 })();

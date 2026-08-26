@@ -3,28 +3,170 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>404 · icybear</title>
 
-  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="images/favicon-180.png">
+  <!-- What this page is allowed to load, and from where. Everything starts
+       denied ('none') and each source is added back deliberately.
+       The error page loads no external script, so its one inline handler is
+       allowed by HASH rather than by 'self'. Edit that script and the hash must
+       change with it; test/csp.test.js fails if they drift apart.
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Montserrat:wght@500;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+       The point of the script rule: if anything ever managed to get markup onto
+       a page (a guestbook name, a URL parameter, a future feature), the browser
+       refuses to execute a script inside it even though the markup arrived. It
+       sits behind the escaping, not instead of it.
 
-  <link rel="stylesheet" href="style.css">
+       style-src needs 'unsafe-inline' for the style="" attributes in the markup;
+       that is the one loose rule and it is the cheap one, since the protection
+       lives in the script rule. Note that sky.js setting element.style.left is
+       NOT affected: the CSSOM is not gated by CSP, only markup is.
+
+       frame-ancestors (the anti-clickjacking rule) is deliberately absent: it is
+       ignored in a meta tag and only works as a real HTTP header, which GitHub
+       Pages does not let us set. Claiming it here would be decoration.
+
+       Downloads are unaffected. The share card and the product key file go out
+       through <a download> with a blob: URL, which is a navigation, not a
+       resource load, and no fetch directive gates it. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KdLrEiBXkAe9Ze5I5V4XNcBeI+QGf5ZCis3FifL9X9k='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>404 · icybearOS</title>
+  <meta name="robots" content="noindex">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon-180.png">
+
+  <link rel="stylesheet" href="/fonts.css?v=1.1.0">
+
+  <!-- Inlined rather than pulling os.css. An error page has to render on the
+       one request it gets, from any path on the site, without depending on a
+       4000-line stylesheet written for a desktop that is not here. These are
+       the crash screen's rules, kept in step with .bsod__* in os.css. -->
+  <style>
+    :root {
+      --font-mono: 'Space Mono', ui-monospace, monospace;
+      --font-display: 'Bagel Fat One', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: #000;
+      font-family: var(--font-mono);
+      /* the whole page is the crash, so the button target is the page */
+      cursor: pointer;
+    }
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 24px;
+      text-align: center;
+      color: #fff;
+      background: linear-gradient(150deg, #8fc2f4, #b99df0);
+      transform-origin: center;
+      animation: crt-on 0.55s cubic-bezier(0.2, 0.9, 0.2, 1);
+    }
+    /* A column flex with align-items:center sizes every child to its own
+       max-content width, which can be wider than the phone. Nothing clamped
+       them, so the headline and the error line both ran off the right edge. */
+    .screen > * { max-width: 100%; }
+
+    /* scanlines, the thing that makes it read as a screen and not a page */
+    .screen::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.13) 0 1px, transparent 1px 3px);
+    }
+    .face {
+      font: 400 clamp(48px, 12vw, 76px) var(--font-display);
+      text-shadow: 0 4px 0 #6b3da0;
+      animation: blink 3.4s steps(1) infinite;
+    }
+    .t1 {
+      position: relative;
+      margin: 0;
+      font: 700 clamp(11px, 3.4vw, 16px) var(--font-mono);
+      letter-spacing: 2px;
+    }
+    /* 32 characters at 2px tracking does not fit a phone. The ::before/::after
+       copies read the same attr(), so they wrap in step with the real text. */
+    @media (max-width: 520px) { .t1 { letter-spacing: 1px; } }
+    /* printed three times, slightly out of register: the channel split */
+    .t1::before,
+    .t1::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      mix-blend-mode: screen;
+    }
+    .t1::before { color: #ff4ecd; animation: ch-a 1.1s steps(2) infinite; }
+    .t1::after  { color: #4ee0ff; animation: ch-b 0.9s steps(2) infinite; }
+    .t2 { margin: 0; font: 400 11px var(--font-mono); letter-spacing: 1.5px; opacity: 0.9; }
+    .trace {
+      margin: 2px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      font: 400 10.5px/1.9 var(--font-mono);
+      opacity: 0.72;
+      text-align: left;
+      white-space: pre;
+    }
+    .press { margin-top: 8px; animation: boot-blink 1.2s steps(2) infinite; }
+    /* a real link underneath, so this works without a pointer or a keyboard */
+    .home {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      text-indent: -9999px;
+      overflow: hidden;
+    }
+    .home:focus-visible { outline: 3px solid #fff; outline-offset: -6px; }
+
+    @keyframes crt-on {
+      0%   { transform: scaleY(0.004); opacity: 0; filter: brightness(6); }
+      28%  { transform: scaleY(0.004); opacity: 1; filter: brightness(6); }
+      62%  { transform: scaleY(1); filter: brightness(1.7); }
+      100% { transform: none; filter: none; }
+    }
+    @keyframes blink { 0%, 93%, 100% { opacity: 1; } 95% { opacity: 0.25; } }
+    @keyframes ch-a { 0%, 100% { transform: translate(-2px, 0); } 50% { transform: translate(2px, -1px); } }
+    @keyframes ch-b { 0%, 100% { transform: translate(2px, 0); } 50% { transform: translate(-2px, 1px); } }
+    @keyframes boot-blink { 50% { opacity: 0; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .screen, .face, .t1::before, .t1::after, .press { animation: none; }
+    }
+  </style>
 </head>
 <body>
 
-  <div class="grid-overlay" aria-hidden="true"></div>
-
-  <div class="not-found">
-    <p class="eyebrow">✦ QUEST FAILED ✦</p>
-    <div class="not-found__code">404</div>
-    <p class="not-found__message">this page wandered off into the kawaii void. it's not lost forever, just not here.</p>
-    <a class="button holo-surface button--primary" href="/">▸ BACK TO SAFETY</a>
+  <div class="screen" role="alertdialog" aria-labelledby="t1">
+    <div class="face" aria-hidden="true">;–;</div>
+    <p class="t1" id="t1" data-text="PAGE NOT FOUND ✦ SYSTEM CONFUSED">PAGE NOT FOUND ✦ SYSTEM CONFUSED</p>
+    <p class="t2">error 0x00404: that page is not on this computer</p>
+    <pre class="trace">at you_typed_that() line 4
+at nothing_was_there() line 0
+at the_bear_looked_anyway() line 4</pre>
+    <p class="t2">it might have been renamed. it might never have existed.</p>
+    <p class="t2 press">press or tap to keep believing</p>
   </div>
 
-  <script src="script.js"></script>
+  <a class="home" href="/">go home</a>
+
+  <script>
+    /* any key, the way the crash screen does it. The anchor above already
+       handles click, tap and keyboard activation, so this only adds the
+       "any key" affordance the copy promises. */
+    addEventListener('keydown', function (e) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;      /* a browser shortcut */
+      if (e.key === 'Tab' || e.key === 'Shift') return;    /* someone is tabbing */
+      location.href = '/';
+    });
+  </script>
 </body>
 </html>

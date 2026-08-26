@@ -1,0 +1,632 @@
+/* ==========================================================================
+   icybearOS — DESIGN TOKENS. Loaded by every page on the site.
+
+   Split out of os.css because the alignment chart was running on the previous
+   site's palette (--purple-mid, --button-top) plus twenty-one hardcoded hex
+   values, so the two pages could not agree about what colour anything was and
+   a theme change had to be made twice. Same reason the faq copy and the name
+   blocklist each got a check: one fact, one place.
+
+   Everything here is a custom property. No page has a rule in this file, so
+   loading it costs nothing but the declarations a page actually reads.
+
+   The theme blocks key off body[data-wall] and body[data-mode]; any page that
+   sets those two attributes inherits all twenty looks.
+   ========================================================================== */
+
+:root {
+  /* ------------------------------------------------------------------ TYPE
+     Two ratio regimes. The UI band steps by a minor third (1.2), close enough
+     to stay dense and far enough that every step is visible. The display band
+     steps by root two (1.414), the proportion of a sheet of paper. The scale
+     does not jump between them: 24/17 is 1.4118, so it accelerates smoothly
+     from one ratio to the other and stays there.
+
+     Line height is part of the token, not a separate decision. It loosens for
+     small text and tightens for large. */
+  --text-micro: 8px;      --lh-micro: 1.6;
+  --text-caption: 10px;   --lh-caption: 1.6;
+  --text-body: 12px;      --lh-body: 1.5;
+  --text-lead: 14px;      --lh-lead: 1.5;
+  --text-subhead: 17px;   --lh-subhead: 1.3;
+  --text-title: 24px;     --lh-title: 1.3;
+  --text-display: 34px;   --lh-display: 1.15;
+  --text-hero: 48px;      --lh-hero: 1.15;
+
+  /* Tracking. Any uppercase text below --text-body carries at least
+     --track-label: uppercase at small sizes without tracking is the most
+     common way a kawaii interface reads as amateur. */
+  --track-none: 0;
+  --track-tight: 0.5px;
+  --track-label: 1px;
+  --track-wide: 2px;
+  --track-wider: 3px;
+  --track-widest: 4px;
+
+  /* ----------------------------------------------------------------- SPACE
+     A 4px grid, with 2 and 6 as half-steps at the fine end where optical
+     correction needs finer control than rhythm does. */
+  --space-hair: 2px;
+  --space-xs: 4px;
+  --space-sm: 6px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+
+  /* ---------------------------------------------------------------- RADIUS
+     Drawn FROM the spacing scale, not invented beside it. A corner and a gap
+     are the same measurement at the same scale, so a component whose padding
+     is --space-lg takes --radius-md without anyone deciding. Pill and circle
+     are shapes rather than steps. */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+  --radius-circle: 50%;
+
+  /* ---------------------------------------------------------------- MOTION
+     Octaves: each step is exactly double the last. Exits are faster than
+     entrances, always -- an arrival should be explained, a departure should
+     get out of the way. Ambient loops are unbounded and linear. */
+  --motion-state: 110ms;
+  --motion-exit: 220ms;
+  --motion-enter: 440ms;
+  --motion-slow: 880ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-linear: linear;
+
+  /* ------------------------------------------------------------- ELEVATION
+     Five rungs, because a windowing UI has five heights: the plane, a control
+     on a panel, a panel, a window, and a thing over the whole machine.
+     Elevation is a surface's relationship to what is behind it, NOT its
+     z-index: windows occupy z 10-39 both focused and unfocused.
+
+     An elevated surface resets the ladder for its children. A card inside a
+     window is --elev-flat, because it is lifted off the window, not off the
+     wallpaper, and the window's shadow already separates the pair. */
+     GEOMETRY ONLY, and the colour is composed at the point of use:
+
+         box-shadow: var(--elev-raised) var(--os-shadow);
+
+     Baking var(--os-shadow) into the rung looks tidier and silently breaks.
+     --os-shadow is declared on body[data-wall], not on :root, so a rung
+     declared here that references it is GUARANTEED-INVALID at declaration time
+     and inherits down as an empty value. Every shadow using it vanishes, and
+     nothing errors: the icon tiles fell through to a keyframe's pink glow. A
+     custom property's var() is resolved on the element where the property is
+     DECLARED, not where it is used. */
+  --elev-flat: none;
+  --elev-raised: 0 4px 12px;
+  --elev-floating: 0 8px 20px;
+  --elev-window: 0 18px 46px;
+  /* A window that is not the front one. Named rather than left as a literal in
+     a component: a rung with an unnamed sibling is not a rung. It sits below
+     --elev-floating on purpose, because an unfocused window should read as
+     further back than a menu even though it is lower in the z-stack. */
+  --elev-window-dim: 0 6px 14px;
+  --elev-modal: 0 24px 60px;
+
+  /* Glow is additive: composed ON TOP of a rung, never instead of one.
+     Treating focus as a ladder position is half of why the raw shadow
+     geometry count reached 55. */
+  --glow-focus: 0 0 26px;
+  --glow-deco: 0 0 14px;
+
+  /* A ring is a border drawn as a shadow, so it does not affect layout. */
+  --ring-hair: 0 0 0 1px;
+  --ring-focus: 0 0 0 4px;
+  --ring-halo: 0 0 0 22px;
+
+  /* ----------------------------------------------------------------- GLASS
+     Saturation climbs with blur on purpose: the more a backdrop is blurred the
+     more its colour averages toward grey, and saturation compensates. That
+     relationship is why these are five recipes and not one blur scale.
+     --glass-chrome also lifts brightness because it sits over the darkest part
+     of the composition and has to stay readable as a surface.
+
+     The fill (--os-glass), the border (--glass-edge), the top highlight
+     (--glass-spec) and one recipe travel together. A glass surface that sets
+     fill without border and highlight reads as flat tinted plastic. */
+  /* A BACKDROP is not a surface. Its job is to obscure what is behind it, not
+     to be a thing you read on, so it takes no saturation lift: there is no
+     surface colour to keep from going grey. Three overlays used 3, 4 and 6px;
+     6 is the most common and the other two move to it. */
+  --glass-veil: blur(6px);
+  --glass-sheer: blur(7px) saturate(170%);
+  --glass-tile: blur(8px) saturate(185%);
+  --glass-chip: blur(13px) saturate(190%);
+  --glass-window: blur(30px) saturate(200%);
+  --glass-chrome: blur(34px) saturate(230%) brightness(1.04);
+
+  /* Text and glyphs ON the CTA gradient. Separate from --on-accent because
+     --t-cta does NOT change at night while --os-accent does: the CTA stays a
+     deep gradient in every palette, so white always reads on it (4.87 worst),
+     while the accent lightens at night and needs dark ink there. One token
+     asked to do both jobs fails one of them.
+     A theme that lightens --t-cta must override this. */
+  --on-cta: #ffffff;
+
+  /* -------------------------------------------------------------- STATUS
+     Theme-independent, because meaning should not change with wallpaper.
+     Status never replaces --os-accent as the interactive signal, and status is
+     never the ONLY signal: it always pairs with an icon or text, so it survives
+     colour blindness and forced-colors. */
+  --os-success: #1c7d5a;      --os-success-tint: #1c7d5a1f;
+  --os-warning: #9a6410;      --os-warning-tint: #9a64101f;
+  --os-danger:  #b3243f;      --os-danger-tint:  #b3243f1f;
+
+  /* The ink of a disabled control. An effect, not an opacity, so a component
+     does not have to fade its own border and shadow to match. */
+  --os-disabled: #8b84a8;
+
+  /* z-index table. Three stacking bugs taught us these are tokens, not folklore. */ Three stacking bugs taught us these are tokens, not folklore. */
+  --z-sky: 0;
+  --z-decor: 1;
+  --z-chrome: 2;
+  --z-standee: 3;
+  --z-icons: 5;
+  --z-rail: 6;          /* mood ring + system specs, above the icons */
+  --z-bear: 7;          /* on the desktop floor, in front of the icons, UNDER
+                           every window. It used to sit at a raw 14, inside the
+                           window band, so which side of a window the bear stood
+                           on depended on how many you had opened. */
+  --z-drag: 8;          /* an icon in mid-drag, over its own row, under windows */
+  --z-win: 10;          /* windows occupy 10-39, reassigned on focus */
+  --z-note: 39;         /* stuck ON the desktop, so above the windows it is
+                           stuck over, but under the dock */
+  --z-dock: 40;
+  --z-bubble: 45;
+  --z-floaty: 46;       /* what a verb throws off, just over the bubble. It was
+                           a raw 60, numerically colliding with --z-phone. */
+  --z-menu: 50;
+  --z-menu-drop: 55;    /* the table said "50 bar, 55 dropdowns"; the 55 was a
+                           literal, so the comment was the only record of it */
+  --z-phone: 60;
+  --z-crt: 65;         /* over the whole machine, under the photo of it */
+  --z-capture: 70;
+  --z-settings: 71;     /* settings sheet, under the panel it opens */
+  --z-modal: 72;        /* the product key panel, over the capture card */
+  --z-toast: 80;        /* toasts + the gn curtain */
+  --z-overlay: 90;      /* credits, bsod, angel rain */
+  --z-boot: 100;
+
+  /* Surface tokens (--os-ink, --os-surface, --os-glass, …) and identity tokens
+     (--t-art, --t-bar, --t-cta, --t-stone) are set per theme below. Nothing
+     hardcodes a surface colour outside that block. */
+
+  /* ------------------------------------------------------------------
+     THE LANDING PAGE LAYER
+
+     These were declared in style.css, which three pages load: the OS, the
+     chart and classic/. That made style.css a second token layer, and it was
+     the older of the two, so a palette entry lived in one file and the surface
+     that used it in another. They are the same layer and they belong together.
+
+     They are also flat by design, which is the point of keeping them separate
+     from the --os-* set. The OS retints per theme x weather; the landing page
+     has one look, and the components that both pages share (.button, .pill,
+     .tag, .work-item) are re-skinned contextually by os.css when they appear
+     inside a window. Retinting these per theme would fight that. */
+  --purple-dark: #5a3f8f;
+  --purple-mid: #7d64b8;
+  --purple-text: #5a4390;
+  --purple-accent: #8b6cc9;
+  --purple-accent-2: #9a7fd1;
+  --pink: #c45cae;
+  --pink-soft: #e07bb8;
+  --lilac: #b99df0;
+  --button-top: #c58ae0;
+  --button-bottom: #9d74d6;
+  --card-bg: #ffffffbf;
+  --pill-bg: #ffffffcc;
+  --tag-bg: #ffffff99;
+
+  --font-display: 'Bagel Fat One', cursive;
+  --font-body: 'Montserrat', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+
+  /* script.js drives these site-wide; every foil surface reads them */
+  --holo-x: 50%;
+  --holo-y: 50%;
+
+  /* the graph-paper rule. The OS overrides it per theme x weather below, which
+     is a body[data-wall] selector and so outranks this; a page with no theme
+     on it (classic/) keeps this one. */
+  --grid-line: #ffffff33;
+
+  /* ------------------------------------------------------- WINDOW LIGHTS
+     The three title-bar controls, and they ARE in the palette: strawberry,
+     orchid and mint are three of the thirteen family hues the app icons use
+     (portfolio.exe, resume.pdf and terminal.exe wear these exact three).
+
+     WHAT SEPARATES THEM FROM THE BAR IS LIGHTNESS, NOT HUE. That took two goes
+     to find. The first attempt reached outside the families entirely, on the
+     theory that the bar's own gradient is made of the same arc the families
+     occupy (168 to 352) and an in-family light would camouflage against it.
+     Rendered side by side, that turned out to be a misdiagnosis: the in-family
+     lights in that test were set at L 0.80, which is inside the range the BAR's
+     own pale tints occupy, so they were competing with the bar on its own
+     ground. Dropped to 0.74 -- below anything in the gradient, and still well
+     above the neon register that a really dark version lands in -- all three
+     read cleanly on the light bar and on the night one, and they are the site's
+     own colours.
+
+     One base lightness, one chroma fraction, lightness then tilted toward each
+     hue's own chroma peak, which is the icon set's rule. Generated by
+     test/icons.py's oklch(); before this they were three hexes borrowed from a
+     Mac and nudged by eye, sitting at three different lightnesses and at 68%,
+     84% and 86% of their own ceilings.
+
+     Deliberately NOT theme tokens. A window control that changes colour with
+     the wallpaper stops being a control. */
+  --tl-close: #ef718d;   /* strawberry  h8   */
+  --tl-shade: #d071ed;   /* orchid      h318 */
+  --tl-zoom:  #57d5ab;   /* mint        h168 */
+}
+
+/* THEMES — four palette families, each defining its own four weather skies.
+   Every ink/surface pair below is WCAG-verified (see icybearos-spec.md).
+   Generated from scratchpad/palettes.py; do not hand-tune one value in isolation. */
+
+/* ---- cold boot · always available ---- */
+body[data-wall="base"] {
+  --t-deco: #e07bb8;
+  --t-art: linear-gradient(160deg, #ffffff 0%, #f6b8e4 33%, #a98ee8 67%, #8fc2f4 100%);
+  --t-bar: linear-gradient(115deg, #ffffff 0%, #f6b8e4 33%, #b9a4ee 67%, #a8cdf5 100%);
+  --t-bar-ink: #3d2a63;
+  --t-bar-chip: rgba(61,42,99,0.10);
+  --t-cta-top: #8f56c6;
+  --t-cta-bottom: #6d43b6;
+  --t-cta: linear-gradient(180deg, #8f56c6, #6d43b6);
+  --t-stone: conic-gradient(#f6b8e4, #a98ee8, #8fc2f4, #e07bb8, #f6b8e4);
+  --sky-day: linear-gradient(120deg, #e8d5f7 0%, #d3d3f9 50%, #c0d8f8 100%);
+  --sky-night: linear-gradient(120deg, #241c47 0%, #1f1a3e 50%, #191f3d 100%);
+  --sky-rain: linear-gradient(120deg, #aeb8e0 0%, #9fa9d6 50%, #96a4d4 100%);
+  --sky-snow: linear-gradient(120deg, #e4eefa 0%, #dae7f7 50%, #edf4fc 100%);
+  --os-ink: #3d2a63;
+  --os-ink-dim: #5a4390;
+  --os-accent: #a8348c;
+  --on-accent: #ffffff;
+  --os-surface: #ffffffd9;
+  --os-pill: #ffffffe6;
+  --os-border: #e5d5f7;
+  --os-border-strong: #8f7eac;
+  --os-glass: #ffffff5c;
+  --glass-edge: #ffffff96;
+  --glass-spec: #fffffff2;
+  --os-inset: #ffffffe6;
+  --os-shadow: #5a3f8f38;
+  --os-scrim: #241c47b3;
+  --os-selection: var(--t-deco);
+  --os-selection-ink: #3d2a63;
+  --grid-line: #8b6cc91f;
+  --os-glass-dense: #ffffffd9;
+  --glass-sheen: 0.42;
+}
+body[data-wall="base"][data-mode="night"] {
+  --os-ink: #ece4ff;
+  --os-ink-dim: #bdb0e4;
+  --os-accent: #ffa6de;
+  --on-accent: #3d2a63;
+  --os-surface: #2b2350e6;
+  --os-pill: #3a3160f2;
+  --os-border: #514287;
+  --os-border-strong: #7c6fa9;
+  --os-glass: #2b23508c;
+  --glass-edge: #ffffff45;
+  --glass-spec: #ffffff73;
+  --os-inset: #ffffff2e;
+  --os-shadow: #0d0a2380;
+  --grid-line: #b99df024;
+  --os-glass-dense: #2b2350d9;
+  --glass-sheen: 0.10;
+}
+body[data-wall="base"][data-mode="rain"] {
+  --os-ink-dim: #33245c;
+  --os-accent: #8e2676;
+}
+
+/* ---- prismagical · unlocks at 3 badges ---- */
+body[data-wall="holo"] {
+  --t-deco: #7fe6ff;
+  --t-art: linear-gradient(160deg, #ffffff 0%, #ffd4f0 25%, #c4f0ff 50%, #d9ffe8 75%, #e0d0ff 100%);
+  --t-bar: linear-gradient(115deg, #ffffff 0%, #ffd9f2 33%, #c4f0ff 67%, #ded0ff 100%);
+  --t-bar-ink: #33265e;
+  --t-bar-chip: rgba(51,38,94,0.10);
+  --t-cta-top: #7a4fc9;
+  --t-cta-bottom: #5b3fb3;
+  --t-cta: linear-gradient(180deg, #7a4fc9, #5b3fb3);
+  --t-stone: conic-gradient(#ffd4f0, #c4f0ff, #d9ffe8, #e0d0ff, #7fe6ff, #ffd4f0);
+  --sky-day: linear-gradient(120deg, #fbe6f6 0%, #dfeafd 50%, #dffbf1 100%);
+  --sky-night: linear-gradient(120deg, #1d2148 0%, #241d4c 50%, #152a44 100%);
+  --sky-rain: linear-gradient(120deg, #b6c0e4 0%, #a8b4dc 50%, #a6c2d8 100%);
+  --sky-snow: linear-gradient(120deg, #eef6fd 0%, #f8ecfb 50%, #e8fbf6 100%);
+  --os-ink: #33265e;
+  --os-ink-dim: #524a8c;
+  --os-accent: #9e2c8e;
+  --on-accent: #ffffff;
+  --os-surface: #fdfbffdb;
+  --os-pill: #fdfbffe8;
+  --os-border: #dfe2f7;
+  --os-border-strong: #8680a7;
+  --os-glass: #fdfbff5c;
+  --glass-edge: #ffffff9e;
+  --glass-spec: #fffffff2;
+  --os-inset: #ffffffe6;
+  --os-shadow: #4a3f8f3d;
+  --os-scrim: #20244fb3;
+  --os-selection: var(--t-deco);
+  --os-selection-ink: #33265e;
+  --grid-line: #6f7cc91f;
+  --os-glass-dense: #fdfbffd9;
+  --glass-sheen: 0.42;
+}
+body[data-wall="holo"][data-mode="night"] {
+  --os-ink: #eaf2ff;
+  --os-ink-dim: #b2c0e8;
+  --os-accent: #8fe8ff;
+  --on-accent: #33265e;
+  --os-surface: #20244fe6;
+  --os-pill: #2c3164f2;
+  --os-border: #41498f;
+  --os-border-strong: #6b73ab;
+  --os-glass: #20244f8c;
+  --glass-edge: #ffffff4d;
+  --glass-spec: #ffffff80;
+  --os-inset: #ffffff33;
+  --os-shadow: #080b2880;
+  --grid-line: #8fd8ff24;
+  --os-glass-dense: #20244fd9;
+  --glass-sheen: 0.10;
+}
+body[data-wall="holo"][data-mode="rain"] {
+  --os-ink-dim: #2c2a5e;
+  --os-accent: #8a2a7e;
+}
+
+/* ---- strawberry spritz · unlocks at 6 badges ---- */
+body[data-wall="strawberry"] {
+  --t-deco: #f28fc4;
+  --t-art: linear-gradient(160deg, #ffffff 0%, #ffc9e2 33%, #f0a0cc 67%, #ffd9ec 100%);
+  --t-bar: linear-gradient(115deg, #ffffff 0%, #ffd7ea 33%, #f8b0d4 67%, #ffe4f2 100%);
+  --t-bar-ink: #5a2044;
+  --t-bar-chip: rgba(90,32,68,0.10);
+  --t-cta-top: #b8407b;
+  --t-cta-bottom: #932f66;
+  --t-cta: linear-gradient(180deg, #b8407b, #932f66);
+  --t-stone: conic-gradient(#ffc9e2, #f0a0cc, #ffd9ec, #f28fc4, #ffc9e2);
+  --sky-day: linear-gradient(120deg, #fde6f1 0%, #fbd7e7 50%, #f6dcf5 100%);
+  --sky-night: linear-gradient(120deg, #2f1832 0%, #2a1930 50%, #26182e 100%);
+  --sky-rain: linear-gradient(120deg, #c6afd2 0%, #b9a3ca 50%, #b0a2cb 100%);
+  --sky-snow: linear-gradient(120deg, #fdf0f7 0%, #fbe9f2 50%, #f9f0fb 100%);
+  --os-ink: #5a2044;
+  --os-ink-dim: #7d3d63;
+  --os-accent: #b32270;
+  --on-accent: #ffffff;
+  --os-surface: #fffbfdd9;
+  --os-pill: #fffafce6;
+  --os-border: #f6d5e6;
+  --os-border-strong: #a57792;
+  --os-glass: #fff7fb5c;
+  --glass-edge: #ffffff9e;
+  --glass-spec: #fffffff2;
+  --os-inset: #ffffffe6;
+  --os-shadow: #8f3f6e33;
+  --os-scrim: #3a1f38b3;
+  --os-selection: var(--t-deco);
+  --os-selection-ink: #5a2044;
+  --grid-line: #c9739f1f;
+  --os-glass-dense: #fff7fbd9;
+  --glass-sheen: 0.42;
+}
+body[data-wall="strawberry"][data-mode="night"] {
+  --os-ink: #ffe6f3;
+  --os-ink-dim: #e0b3cb;
+  --os-accent: #ff9ecb;
+  --on-accent: #5a2044;
+  --os-surface: #3a1f38e6;
+  --os-pill: #4a2a46f2;
+  --os-border: #6b3d61;
+  --os-border-strong: #936b88;
+  --os-glass: #3a1f388c;
+  --glass-edge: #ffffff45;
+  --glass-spec: #ffffff73;
+  --os-inset: #ffffff2e;
+  --os-shadow: #1d0a1a80;
+  --grid-line: #f0a8cf24;
+  --os-glass-dense: #3a1f38d9;
+  --glass-sheen: 0.10;
+}
+body[data-wall="strawberry"][data-mode="rain"] {
+  --os-ink-dim: #4a1636;
+  --os-accent: #94175c;
+}
+
+/* ---- midnight arcade · unlocks at 9 badges ---- */
+body[data-wall="arcade"] {
+  --t-deco: #57e8ff;
+  --t-art: linear-gradient(160deg, #ffffff 0%, #7de3ff 33%, #b58ded 67%, #ff8ad8 100%);
+  --t-bar: linear-gradient(115deg, #3f3496 0%, #5a3aa8 33%, #7e3a9e 67%, #93409c 100%);
+  --t-bar-ink: #ffffff;
+  --t-bar-chip: rgba(255,255,255,0.18);
+  --t-cta-top: #6b53c9;
+  --t-cta-bottom: #4733a0;
+  --t-cta: linear-gradient(180deg, #6b53c9, #4733a0);
+  --t-stone: conic-gradient(#7de3ff, #b58ded, #ff8ad8, #57e8ff, #7de3ff);
+  --sky-day: linear-gradient(120deg, #221c4a 0%, #2b2159 50%, #1c2a5c 100%);
+  --sky-night: linear-gradient(120deg, #141130 0%, #1a1440 50%, #111838 100%);
+  --sky-rain: linear-gradient(120deg, #181b40 0%, #1e2250 50%, #142348 100%);
+  --sky-snow: linear-gradient(120deg, #252352 0%, #2c2a63 50%, #213060 100%);
+  --os-ink: #eae4ff;
+  --os-ink-dim: #b6aee8;
+  --os-accent: #7de3ff;
+  --on-accent: #241f4c;
+  --os-surface: #241f4ce6;
+  --os-pill: #332c63f2;
+  --os-border: #4a4090;
+  --os-border-strong: #776eaf;
+  --os-glass: #241f4c8c;
+  --glass-edge: #7de3ff59;
+  --glass-spec: #bff2ff8c;
+  --os-inset: #ffffff33;
+  --os-shadow: #07051f8c;
+  --os-scrim: #07051fcc;
+  --os-selection: var(--t-deco);
+  --os-selection-ink: #241f4c;
+  --grid-line: #7de3ff1f;
+  --os-glass-dense: #241f4cd9;
+  --glass-sheen: 0.10;
+}
+
+/* ---- archangel · unlocks at 13 badges ---- */
+body[data-wall="archangel"] {
+  --t-deco: #cba9f4;
+  --t-art: linear-gradient(160deg, #ffffff 0%, #f4eaff 33%, #cba9f4 67%, #8b5cd0 100%);
+  --t-bar: linear-gradient(115deg, #ffffff 0%, #ece0ff 33%, #cba9f4 67%, #dfeaff 100%);
+  --t-bar-ink: #322036;
+  --t-bar-chip: rgba(50,32,54,0.10);
+  --t-cta-top: #6033c4;
+  --t-cta-bottom: #4a1fa8;
+  --t-cta: linear-gradient(180deg, #6033c4, #4a1fa8);
+  --t-stone: conic-gradient(#f4eaff, #cba9f4, #8b5cd0, #cba9f4, #f4eaff);
+  --sky-day: linear-gradient(120deg, #f6ecff 0%, #e7d3fb 50%, #f2e6ff 100%);
+  --sky-night: linear-gradient(120deg, #1b1030 0%, #241540 50%, #150e29 100%);
+  --sky-rain: linear-gradient(120deg, #c1aede 0%, #b3a1d4 50%, #b8acda 100%);
+  --sky-snow: linear-gradient(120deg, #f8f2ff 0%, #efe6fc 50%, #faf6ff 100%);
+  --os-ink: #322036;
+  --os-ink-dim: #5b3f7a;
+  --os-accent: #5a29c2;
+  --on-accent: #ffffff;
+  --os-surface: #fdf9ffdb;
+  --os-pill: #faf4ffe8;
+  --os-border: #e2d0f8;
+  --os-border-strong: #8f7d9d;
+  --os-glass: #f8f0ff5c;
+  --glass-edge: #a9e4ff54;
+  --glass-spec: #fffffff2;
+  --os-inset: #ffffffe6;
+  --os-shadow: #6b28c83d;
+  --os-scrim: #241640b3;
+  --os-selection: var(--t-deco);
+  --os-selection-ink: #322036;
+  --grid-line: #9b6cd826;
+  --os-glass-dense: #f8f0ffd9;
+  --glass-sheen: 0.42;
+}
+body[data-wall="archangel"][data-mode="night"] {
+  --os-ink: #f0e4ff;
+  --os-ink-dim: #c3aee8;
+  --os-accent: #d8bef8;
+  --on-accent: #322036;
+  --os-surface: #241640e6;
+  --os-pill: #31204ff2;
+  --os-border: #4c3480;
+  --os-border-strong: #7864a2;
+  --os-glass: #2416408c;
+  --glass-edge: #a9e4ff47;
+  --glass-spec: #ffffff8c;
+  --os-inset: #ffffff2e;
+  --os-shadow: #0c0522a6;
+  --grid-line: #cba9f42b;
+  --os-glass-dense: #241640d9;
+  --glass-sheen: 0.10;
+}
+body[data-wall="archangel"][data-mode="rain"] {
+  --os-ink-dim: #2e1c40;
+  --os-accent: #4a1aa8;
+}
+
+/* weather picks which sky of the family is showing */
+body[data-mode="day"] { --os-sky: var(--sky-day); }
+body[data-mode="night"] { --os-sky: var(--sky-night); }
+body[data-mode="rain"] { --os-sky: var(--sky-rain); }
+body[data-mode="snow"] { --os-sky: var(--sky-snow); }
+
+/* rain reads as darker streaks on a light sky, brighter ones on a dark sky */
+body.os { --rain-ink: rgba(84, 94, 146, 0.5); --flake: rgba(255, 255, 255, 0.92); }
+body[data-mode="night"], body[data-wall="arcade"] { --rain-ink: rgba(214, 226, 255, 0.6); }
+
+/* --------------------------------------------------------------------------
+   MOTIFS — the drifting sprites each theme puts in its sky, plus the one
+   theme that overrides the decorative glyph.
+
+   The [data-motif] half of each selector below is how one element borrows one
+   theme's glyph while the body is on a different theme -- the theme-unlocked
+   panel shows you the sky you just earned, not the one you are standing in.
+   Doubling the selector is what keeps the data URIs written once.
+
+   These lived in os.css alongside the --t-* family that was already here,
+   which made this file's own claim ("everything here is a custom property, one
+   fact, one place") false for exactly these six tokens. They are read by
+   sky.css, which the chart loads without os.css's OS chrome, so they belong on
+   this side of the line anyway.
+   -------------------------------------------------------------------------- */
+/* ---- cold boot · restraint. it is the room, not the party --------------- */
+body[data-wall="base"],
+[data-motif="base"] {
+  --motif-anim: motif-rise;
+  --motif-op: 0.5;
+  --motif-1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0c1.2 7.4 3.4 9.6 12 12-8.6 2.4-10.8 4.6-12 12-1.2-7.4-3.4-9.6-12-12C8.6 9.6 10.8 7.4 12 0z' fill='%23ffffff' stroke='%23c9b4ee' stroke-width='.9'/%3E%3C/svg%3E");
+  --motif-2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 21C12 21 1 13.6 1 7.4 1 3.9 3.9 1.4 7 1.4c2.1 0 3.9 1.2 5 3 1.1-1.8 2.9-3 5-3 3.1 0 6 2.5 6 6 0 6.2-11 13.6-11 13.6z' fill='%23ffd3ee'/%3E%3C/svg%3E");
+}
+/* ---- prismagical · the foil card, at operating-system scale ------------- */
+body[data-wall="holo"],
+[data-motif="holo"] {
+  --motif-anim: motif-rise;
+  --motif-op: 0.8;
+  --motif-1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 36'%3E%3Cdefs%3E%3ClinearGradient id='p' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ffd4f0'/%3E%3Cstop offset='.34' stop-color='%23c4f0ff'/%3E%3Cstop offset='.68' stop-color='%23d9ffe8'/%3E%3Cstop offset='1' stop-color='%23e0d0ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M12 0l12 13-12 23L0 13z' fill='url(%23p)'/%3E%3Cpath d='M12 0v36' stroke='%23ffffff' stroke-width='.8' opacity='.7'/%3E%3C/svg%3E");
+  --motif-2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0c1.2 7.4 3.4 9.6 12 12-8.6 2.4-10.8 4.6-12 12-1.2-7.4-3.4-9.6-12-12C8.6 9.6 10.8 7.4 12 0z' fill='%23ffffff' stroke='%23c9b4ee' stroke-width='.9'/%3E%3C/svg%3E");
+  --motif-3: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='9' fill='none' stroke='%23c4f0ff' stroke-width='2'/%3E%3Ccircle cx='11' cy='11' r='4' fill='none' stroke='%23ffd4f0' stroke-width='1.4'/%3E%3C/svg%3E");
+}
+/* ---- strawberry spritz · fruit and bubbles rising through a clear drink ---
+   It was called strawberry milk, and milk is opaque, which is why the theme could
+   never be given a form: an opaque medium has no light behaviour, so all
+   there is to draw is soft gradients. Carbonated is transparent, and
+   transparency buys a surface, a rim and bubbles that are the subject
+   rather than specks. The wall KEY stays `strawberry`: it is written to
+   localStorage, so renaming it would reset the theme for everyone who has
+   already chosen it. Only the label in os-strings.js changed. */
+body[data-wall="strawberry"],
+[data-motif="strawberry"] {
+  --motif-anim: motif-rise;
+  --motif-op: 0.82;
+  --motif-1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 28'%3E%3Cpath d='M12 27.2C6.2 22.4 2.2 17.2 2.2 12.2 2.2 7.4 6.6 4.2 12 4.2s9.8 3.2 9.8 8c0 5-4 10.2-9.8 15z' fill='%23f4708f'/%3E%3Cpath d='M12 27.2c-2.6-2.2-4.8-4.6-6.3-7 2.2 1.2 4.4 1.6 6.3 1.6s4.1-.4 6.3-1.6c-1.5 2.4-3.7 4.8-6.3 7z' fill='%23e0567a' opacity='.55'/%3E%3Cpath d='M12 4.6c-3.2 0-5.4-1.1-6.5-3.3 2.2.6 3.4.2 4.5-.8.9 1.1 1.6 1.4 2 1.4s1.1-.3 2-1.4c1.1 1 2.3 1.4 4.5.8-1.1 2.2-3.3 3.3-6.5 3.3z' fill='%237fc98a'/%3E%3Cg fill='%23fff3c4'%3E%3Cellipse cx='8.6' cy='11' rx='.9' ry='1.3'/%3E%3Cellipse cx='15.2' cy='12.2' rx='.9' ry='1.3'/%3E%3Cellipse cx='12' cy='16.4' rx='.9' ry='1.3'/%3E%3Cellipse cx='8' cy='17.6' rx='.9' ry='1.3'/%3E%3Cellipse cx='16' cy='18.4' rx='.9' ry='1.3'/%3E%3Cellipse cx='12' cy='9' rx='.9' ry='1.3'/%3E%3C/g%3E%3C/svg%3E");
+  --motif-2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 21C12 21 1 13.6 1 7.4 1 3.9 3.9 1.4 7 1.4c2.1 0 3.9 1.2 5 3 1.1-1.8 2.9-3 5-3 3.1 0 6 2.5 6 6 0 6.2-11 13.6-11 13.6z' fill='%23ffb3d4'/%3E%3C/svg%3E");
+  /* a bubble, not the milk droplet that used to be here: a droplet falls and
+     this world rises, and nothing in a glass of spritz is opaque. Rim, faint
+     body, one specular highlight. */
+  --motif-3: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8.6' fill='%23ffffff' opacity='.14'/%3E%3Ccircle cx='10' cy='10' r='8.6' fill='none' stroke='%23e884b4' stroke-width='1.5' opacity='.62'/%3E%3Ccircle cx='10' cy='10' r='7.7' fill='none' stroke='%23ffffff' stroke-width='1.1' opacity='.72'/%3E%3Cellipse cx='6.6' cy='6.2' rx='2.5' ry='1.6' fill='%23ffffff' opacity='.8' transform='rotate(-34 6.6 6.2)'/%3E%3C/svg%3E");
+  --motif-4: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='5.4' fill='%23ffffff' opacity='.12'/%3E%3Ccircle cx='10' cy='10' r='5.4' fill='none' stroke='%23e884b4' stroke-width='1.2' opacity='.58'/%3E%3Ccircle cx='10' cy='10' r='4.7' fill='none' stroke='%23ffffff' stroke-width='.9' opacity='.7'/%3E%3Cellipse cx='7.9' cy='7.6' rx='1.5' ry='1' fill='%23ffffff' opacity='.75' transform='rotate(-34 7.9 7.6)'/%3E%3C/svg%3E");
+}
+/* ---- midnight arcade · CRT, neon floor, scanlines ------------------------ */
+body[data-wall="arcade"],
+[data-motif="arcade"] {
+  --motif-anim: motif-rise;
+  --motif-op: 0.75;
+  --motif-1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 12' shape-rendering='crispEdges'%3E%3Cg fill='%23ff8ad8'%3E%3Crect x='2' y='1' width='4' height='1'/%3E%3Crect x='8' y='1' width='4' height='1'/%3E%3Crect x='1' y='2' width='12' height='3'/%3E%3Crect x='2' y='5' width='10' height='2'/%3E%3Crect x='3' y='7' width='8' height='1'/%3E%3Crect x='4' y='8' width='6' height='1'/%3E%3Crect x='5' y='9' width='4' height='1'/%3E%3Crect x='6' y='10' width='2' height='1'/%3E%3C/g%3E%3C/svg%3E");
+  --motif-2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cg fill='%237de3ff'%3E%3Crect x='5' y='0' width='2' height='2'/%3E%3Crect x='5' y='1' width='2' height='2'/%3E%3Crect x='4' y='2' width='4' height='2'/%3E%3Crect x='2' y='4' width='8' height='1'/%3E%3Crect x='0' y='5' width='12' height='2'/%3E%3Crect x='2' y='7' width='8' height='1'/%3E%3Crect x='4' y='8' width='4' height='2'/%3E%3Crect x='5' y='10' width='2' height='2'/%3E%3C/g%3E%3C/svg%3E");
+  --motif-3: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cg fill='%23b58ded'%3E%3Crect x='4' y='0' width='4' height='1'/%3E%3Crect x='2' y='1' width='8' height='1'/%3E%3Crect x='0' y='2' width='12' height='2'/%3E%3Crect x='1' y='4' width='10' height='2'/%3E%3Crect x='2' y='6' width='8' height='2'/%3E%3Crect x='3' y='8' width='6' height='2'/%3E%3Crect x='4' y='10' width='4' height='1'/%3E%3Crect x='5' y='11' width='2' height='1'/%3E%3C/g%3E%3Crect x='3' y='2' width='2' height='2' fill='%23ffffff' opacity='.75'/%3E%3C/svg%3E");
+}
+/* ---- archangel · the 13th. you do not choose it, you finish for it.
+        Drawn from 1333covenant.com: pale lilac chrome, deep violet glow, the
+        angelos pulse, y2k hard bevel, and one thread of terminal green. ------ */
+body[data-wall="archangel"],
+[data-motif="archangel"] {
+  --t-glyph: "<33";
+  --motif-anim: motif-descend;
+  --motif-op: 0.8;
+  --motif-1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 34'%3E%3Cpath d='M20.6 1.2c-9.4 3.6-16.8 11.8-16.8 21.2 0 3.2 1 5.4 2.2 6.6 3-8.4 8-14.8 14.4-19-5.4 5.4-9.4 11.8-11.6 19.4 6.4-1 12.6-6.4 14.4-14.8 1-5.2 0-10.6-2.6-13.4z' fill='%23f2e6ff' stroke='%239b6cd8' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M20.6 1.2C15.2 7.8 10 16.4 6 28.8' stroke='%236b3fb0' stroke-width='1.3' fill='none' stroke-linecap='round'/%3E%3Cpath d='M17 5.6c-3 2-5.6 4.6-7.6 7.6M19 10c-2.6 2.2-4.8 4.8-6.4 7.8' stroke='%239b6cd8' stroke-width='.7' fill='none' opacity='.6'/%3E%3C/svg%3E");
+  --motif-2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 14'%3E%3Cellipse cx='14' cy='7' rx='12.4' ry='5' fill='none' stroke='%23cba9f4' stroke-width='2.4'/%3E%3Cellipse cx='14' cy='7' rx='12.4' ry='5' fill='none' stroke='%23a9e4ff' stroke-width='.9' opacity='.95'/%3E%3Cellipse cx='14' cy='7' rx='9.4' ry='3' fill='none' stroke='%23ffffff' stroke-width='.6' opacity='.8'/%3E%3C/svg%3E");
+  --motif-3: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0c1.2 7.4 3.4 9.6 12 12-8.6 2.4-10.8 4.6-12 12-1.2-7.4-3.4-9.6-12-12C8.6 9.6 10.8 7.4 12 0z' fill='%23ffffff' stroke='%239b6cd8' stroke-width='.9'/%3E%3C/svg%3E");
+  --motif-4: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 30'%3E%3Cpath d='M8.1 1.1h3.8v7.4h7.1v3.8h-7.1v17.6H8.1V12.3H1v-3.8h7.1z' fill='%23fdfaff' stroke='%236b3fb0' stroke-width='1.1' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+  /* the chrome changes MATERIAL, not just colour: a y2k hard bevel instead of a
+     soft drop. this is what makes archangel feel like a different machine. */
+  --glass-drop: 3px 3px 0 rgba(107, 40, 200, 0.28), 0 10px 30px var(--os-shadow);
+}

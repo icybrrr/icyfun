@@ -1,2 +1,96 @@
 .claude/
 .DS_Store
+
+# Source art and working files. These are kept on disk but never deployed:
+# The host serves everything in the repo whether or not a page links to it,
+# and design sources carry metadata that a rendered asset does not need.
+images/inv *
+images/og-pose.png
+images/logo.svg
+images/os/icybearos.svg
+images/os/icybearos.png
+# the original wordmark save; the png is smaller and is what ships
+icybearfun.svg
+
+# Superseded by .webp (74% smaller, alpha bit-identical, no banding). Kept on
+# disk as the lossless source but never deployed.
+images/os/icy-stand-*.png
+images/os/icy-sit*.png
+images/os/icy-lock.png
+images/os/icy-wawa.png
+images/os/icy-avatar.png
+images/os/icy-avatar2.png
+images/os/mobile-lockscreen.png
+# the heart Icy drew, traced into geometry by test/icons.py; the png is the source
+images/os/icons/heart.png
+
+# Superseded, and nothing links to them. Kept on disk, off the site.
+#
+# WHY THESE WERE STILL SHIPPING. Listing a path here does nothing to a file git
+# is already tracking -- the rule only decides what git picks up NEXT. Several
+# of the entries above had been written and never followed with an untrack, so
+# 51.6MB sat in the repo under an ignore rule that read as if it had handled it.
+# If a file is added here and it is already committed, it has to be untracked in
+# the same pass: git rm --cached -- <path>
+#
+# the site links favicon-16/32/48/180; these two are from an older set
+images/favicon.png
+images/favicon-512.png
+# POSES loads icy-sit-1..5. This one is not in the sequence and never loads.
+images/os/icy-sit-sleep.webp
+# os.css masks images/os/icybearos-sm.png, which is a different file
+images/os/icybearfun-sm.png
+# only test/og-image.html draws it, and test/ is not deployed
+images/logo.png
+
+# Working files that should not be versioned at all. These are different from
+# the _config.yml exclude list: that one keeps things out of the published
+# site, this keeps them out of the repo entirely.
+#
+# Note: '#' only opens a comment at the START of a line here. A trailing one
+# becomes part of the pattern and the rule silently matches nothing.
+
+# one-off CORS probe against the edge functions
+_cors_probe.html
+# a debug capture of the share card
+card-base-day-full.png
+# Figma's export name; icybear-cv.pdf is the identical file that ships
+CV - Icy.pdf
+
+# Visual regression captures. Regenerated on demand, never versioned.
+test/.shots/
+
+# the throwaway page and pose crop test/wallpaper.py renders through
+_wp.html
+_wp-pose.webp
+
+# Badge design scaffolding. Kept on disk, never in the repo: this is working
+# material for an unfinished process -- 42 explored motifs, notes on which ones
+# were rejected and why, and a handoff tool for a workflow that may not survive
+# the week. The repo is public and it is attached to a portfolio; none of that
+# belongs in it. The finished badges in images/os/badges/*.svg are the artefact.
+test/motifs.py
+test/place.py
+images/os/badges/blank/
+
+# Supabase CLI scratch: the linked-project ref and a version stamp. Local
+# state about a machine, not about the site -- and it reappears on every CLI
+# command, so it belongs here rather than in a commit.
+supabase/.temp/
+
+# Source art for the wallpaper compositions, not site assets: the render
+# harness inlines them as base64, and nothing the site serves references either.
+# Kept on disk, off the repo -- same rule as the rest of the unused art.
+images/os/covenant-logo.png
+images/os/icybearos-sm-covenant.png
+
+# Tooling, not the site. Every one of these RENDERS something -- badges, icons,
+# poses, the OG card, the resume preview, screenshot sets -- or MEASURES it.
+# The artefacts they produce are in images/ and are what ships. The repo is
+# public and attached to a portfolio; a folder of half-finished generators is
+# not what it should hold. Kept on disk, off the repo.
+test/*.py
+test/*.sh
+test/census.js
+test/og-image.html
+test/og-pose.webp

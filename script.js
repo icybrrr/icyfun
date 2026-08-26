@@ -14,7 +14,24 @@
     hasPointer = true;
   });
 
+  /* Three gates before any work happens.
+
+     This loop writes --holo-x/--holo-y to documentElement, which invalidates
+     style resolution for the WHOLE document on every frame it runs. On the
+     classic page that drives one card; on the OS those properties are read by
+     the focused titlebar's foil and by every .holo-surface, so it was
+     repainting them at 60fps permanently, including while someone sat reading
+     the resume. It is the largest continuous cost on a mid-range phone.
+
+     Nothing is lost by gating it: the foil sweeps and the sparkle drift are CSS
+     animations that run on their own. The pointer only ever added a nudge. */
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  var lastDrift = 0;
+
   function frame(now) {
+    /* a hidden tab does not need a foil */
+    if (document.hidden) { requestAnimationFrame(frame); return; }
+
     var idleFor = now - lastMoveTime;
     var settled = hasPointer && idleFor < 900;
 
@@ -36,8 +53,12 @@
         tiltX = Math.max(-8, Math.min(8, -dy * 8));
       }
     } else {
-      // No recent pointer activity — drift gently on our own so the card
-      // and its holo surfaces never sit dead-still.
+      /* Idle drift: ~12fps is indistinguishable at this speed and costs a fifth
+         of the style invalidations. Under reduced-motion it does not run at
+         all — a CSS blanket cannot stop a loop writing inline properties. */
+      if (reduced && reduced.matches) { requestAnimationFrame(frame); return; }
+      if (now - lastDrift < 80) { requestAnimationFrame(frame); return; }
+      lastDrift = now;
       var t = now / 1000;
       px = 50 + Math.sin(t * 0.35) * 26 + Math.sin(t * 0.17 + 1.3) * 10;
       py = 50 + Math.cos(t * 0.27) * 20 + Math.sin(t * 0.21 + 0.6) * 8;
